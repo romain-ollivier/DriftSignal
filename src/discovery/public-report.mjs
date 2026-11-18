@@ -8,7 +8,7 @@
  */
 export function toPublicB0Report(report) {
   const documents = (report.trace ?? [])
-    .filter((entry) => entry.fetchStatus === 'fetched')
+    .filter((entry) => entry.fetchStatus === 'fetched' && entry.parseStatus === 'parsed')
     .map((entry) => ({
       pageId: entry.pageId,
       title: entry.title,
@@ -33,7 +33,7 @@ export function toPublicB0Report(report) {
       readBudgetTruncated: report.coverage?.readBudgetTruncated === true,
       firstSearchPageOnly: true,
       limitedSearch: true,
-      failedOrSkippedReads: report.coverage?.failedReads > 0,
+      failedOrSkippedReads: report.coverage?.failedReads > 0 || report.coverage?.unusableBodies > 0,
       searchFailed: report.coverage?.searchStatus === 'failed',
     },
     elapsedMs: report.elapsedMs ?? null,
