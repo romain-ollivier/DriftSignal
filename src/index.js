@@ -3,6 +3,8 @@ import api, { route } from '@forge/api';
 import { scanDrift } from './scan.mjs';
 import { requireOk } from './http.mjs';
 import { validPageId } from './core.mjs';
+import { runB0Diagnostic } from './discovery/b0-diagnostic.mjs';
+import { toPublicB0Report } from './discovery/public-report.mjs';
 
 const Resolver = ResolverModule.default ?? ResolverModule;
 const resolver = new Resolver();
@@ -51,6 +53,17 @@ resolver.define('scan', async ({ payload }) => {
   } catch (error) {
     // Never return API tokens, error objects or document bodies to the browser.
     return { ok: false, message: error instanceof Error ? error.message : 'Unexpected error' };
+  }
+});
+
+resolver.define('scanB0', async ({ payload }) => {
+  try {
+    const diagnostic = await runB0Diagnostic(payload?.issueKey, gateway);
+    return { ok: true, data: toPublicB0Report(diagnostic) };
+  } catch {
+    // B0 diagnostics intentionally expose neither raw API errors nor
+    // unfiltered search hits to the Custom UI.
+    return { ok: false, message: 'B0 discovery diagnostic failed.' };
   }
 });
 
