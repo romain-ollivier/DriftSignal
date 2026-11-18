@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { runB1Retrieval } from '../src/discovery/retrieval-b1.mjs';
+import { toPublicB1Retrieval } from '../src/discovery/public-retrieval-b1.mjs';
 import { profileJiraChange } from '../src/discovery/change-profiler.mjs';
 import { planDiscoveryQueries } from '../src/discovery/query-planner.mjs';
 
@@ -206,4 +207,40 @@ test('B1 checks budgets and refuses malformed gateways', async () => {
   await assert.rejects(() => runB1Retrieval(plan([]), g, { readBudget: 100 }), /readBudget/);
   await assert.rejects(() => runB1Retrieval(plan([]), g, { searchLimit: 0 }), /searchLimit/);
   await assert.rejects(() => runB1Retrieval(plan([]), {}), /Gateway/);
+});
+
+
+test('B1 public projection excludes unread and permission-revoked search hits', async () => {
+  const g = gateway({
+    text: { siteId: 'tenant-1', results: [
+      hit('970', 'Authorized runbook'),
+      hit('971', 'Restricted procedure'),
+      hit('972', 'Unselected runbook'),
+    ] },
+  }, {
+    'tenant-1:970': page('970'),
+    'tenant-1:971': new Error('403'),
+    'tenant-1:972': page('972'),
+  });
+  const internal = await runB1Retrieval(plan([query('q1', 'text')]), g, { readBudget: 2 });
+  const external = toPublicB1Retrieval(internal);
+  const json = JSON.stringify(external);
+  assert.equal(external.documents.length, 1);
+  assert.equal(external.documents[0].pageId, '970');
+  assert.equal(json.includes('Restricted procedure'), false);
+  assert.equal(json.includes('971'), false);
+  assert.equal(json.includes('972'), false);
+  assert.equal('candidates' in external, false);
+  assert.equal('rawHits' in external.coverage, false);
+  assert.equal(external.coverage.someReadsFailed, true);
+  assert.equal(external.coverage.readBudgetTruncated, true);
+});
+
+test('B1 public retrieval report does not assert a relevance decision', async () => {
+  const g = gateway({ text: { siteId: 'tenant-1', results: [hit('980')] } }, {
+    'tenant-1:980': page('980'),
+  });
+  const external = toPublicB1Retrieval(await runB1Retrieval(plan([query('q1', 'text')]), g));
+  assert.equal(external.result, 'DOCUMENTS_FETCHED');
+  assert.ok(external.note.includes('not a relevance or drift assessment'));
 });
