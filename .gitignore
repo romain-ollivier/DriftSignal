@@ -1,0 +1,13 @@
+node_modules/
+static/app/node_modules/
+static/app/dist/
+.forge/
+.env
+*.log
+.DS_Store
+*.bak
+*.backup
+.env.*
+!.env.example
+coverage/
+START-HERE-romainrollivier.md

@@ -1,0 +1,15 @@
+{
+  "key": "PAY-101",
+  "fields": {
+    "summary": "Migrate payment gateway endpoint to API v2",
+    "description": {
+      "type": "doc",
+      "version": 1,
+      "content": [
+        {"type": "paragraph", "content": [{"type": "text", "text": "Service: payment-gateway"}]},
+        {"type": "paragraph", "content": [{"type": "text", "text": "New endpoint: /api/v2/payments"}]},
+        {"type": "paragraph", "content": [{"type": "text", "text": "The new endpoint has been approved for the service."}]}
+      ]
+    }
+  }
+}

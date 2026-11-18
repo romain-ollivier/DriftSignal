@@ -1,0 +1,10 @@
+{
+  "id": "123456",
+  "title": "Payment Gateway - Recovery Runbook",
+  "body": {
+    "storage": {
+      "representation": "storage",
+      "value": "<h1>Payment Gateway</h1><p>Service: payment-gateway</p><p>Endpoint: /api/v1/payments</p><p>Owner: Core Payments Team</p>"
+    }
+  }
+}
