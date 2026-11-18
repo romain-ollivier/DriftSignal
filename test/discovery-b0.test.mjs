@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { runB0Diagnostic } from '../src/discovery/b0-diagnostic.mjs';
+import { toPublicB0Report } from '../src/discovery/public-report.mjs';
 
 const sourceIssue = JSON.parse(readFileSync(new URL('../fixtures/jira-issue.json', import.meta.url)));
 const sourcePage = JSON.parse(readFileSync(new URL('../fixtures/confluence-page.json', import.meta.url)));
@@ -113,4 +114,30 @@ test('B0 validates the read budget', async () => {
     () => runB0Diagnostic('PAY-101', fixtureGateway(), { readBudget: 0 }),
     /readBudget/,
   );
+});
+
+
+test('B0 browser projection reveals only successfully fetched pages', async () => {
+  const second = fixturePage('2088', 'Private Payment Runbook', '<p>Service: payment-gateway</p>');
+  const diagnostic = await runB0Diagnostic('PAY-101', fixtureGateway({
+    pages: [sourcePage, second],
+    failPageId: second.id,
+  }));
+  const browser = toPublicB0Report(diagnostic);
+  assert.equal(browser.status, 'PARTIAL');
+  assert.equal(browser.documents.length, 1);
+  assert.equal(browser.documents[0].pageId, sourcePage.id);
+  assert.equal(JSON.stringify(browser).includes('Private Payment Runbook'), false);
+  assert.equal(JSON.stringify(browser).includes('2088'), false);
+  assert.equal('trace' in browser, false);
+  assert.equal('searchRank' in browser.documents[0], false);
+  assert.equal('returnedHits' in browser.coverage, false);
+});
+
+test('B0 browser projection exposes an abstention without unfiltered traces', async () => {
+  const issue = { ...sourceIssue, fields: { ...sourceIssue.fields, description: 'Update API configuration' } };
+  const browser = toPublicB0Report(await runB0Diagnostic('PAY-101', fixtureGateway({ issue })));
+  assert.equal(browser.inputUsable, false);
+  assert.equal(browser.queryTerm, null);
+  assert.equal(browser.documents.length, 0);
 });
