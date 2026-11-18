@@ -13,7 +13,6 @@ export function toPublicB0Report(report) {
       pageId: entry.pageId,
       title: entry.title,
       url: entry.url,
-      searchRank: entry.searchRank,
       legacyComparison: entry.legacyComparison,
       jiraEvidence: entry.evidence?.jira ?? null,
       confluenceEvidence: entry.evidence?.confluence ?? null,
