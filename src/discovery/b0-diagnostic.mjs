@@ -52,6 +52,8 @@ export async function runB0Diagnostic(issueKey, gateway, options = {}) {
       uniqueHits: 0,
       selectedForRead: 0,
       fetchedPages: 0,
+      parsedPages: 0,
+      unusableBodies: 0,
       failedReads: 0,
       readBudget: requestedBudget,
       searchPageLimit: 20,
@@ -86,15 +88,23 @@ export async function runB0Diagnostic(issueKey, gateway, options = {}) {
 
   const hits = Array.isArray(found) ? found : [];
   report.coverage.returnedHits = hits.length;
-  const seen = new Set();
-  const unique = [];
-  for (const hit of hits) {
+  const deduplicated = new Map();
+  for (let rawIndex = 0; rawIndex < hits.length; rawIndex++) {
+    const hit = hits[rawIndex];
     if (!validPageId(hit?.id)) continue;
     const id = String(hit.id);
-    if (seen.has(id)) continue;
-    seen.add(id);
-    unique.push({ pageId: id, title: hit.title ?? '', url: hit.url ?? null });
+    if (deduplicated.has(id)) {
+      deduplicated.get(id).rawSearchRanks.push(rawIndex + 1);
+    } else {
+      deduplicated.set(id, {
+        pageId: id,
+        title: hit.title ?? '',
+        url: hit.url ?? null,
+        rawSearchRanks: [rawIndex + 1],
+      });
+    }
   }
+  const unique = [...deduplicated.values()];
   report.coverage.uniqueHits = unique.length;
   const selected = unique.slice(0, requestedBudget);
   report.coverage.selectedForRead = selected.length;
@@ -108,32 +118,74 @@ export async function runB0Diagnostic(issueKey, gateway, options = {}) {
 
   for (let index = 0; index < unique.length; index++) {
     const hit = unique[index];
+    const mergedRank = index + 1;
     const willRead = index < requestedBudget;
+    const rankTrace = {
+      // Raw CQL ranks and merged ranks are separate to make de-dup effects visible.
+      rawSearchRanks: [...hit.rawSearchRanks],
+      mergedRank,
+      searchRank: mergedRank, // compatibility with the original B0 trace
+      selectionRank: willRead ? mergedRank : null,
+      searchHit: true,
+      selectedForRead: willRead,
+    };
     if (!willRead) {
       report.trace.push({
         pageId: hit.pageId,
-        searchRank: index + 1,
-        searchHit: true,
-        selectedForRead: false,
+        ...rankTrace,
         fetchStatus: 'not_attempted',
+        parseStatus: 'not_attempted',
+        legacyComparison: 'NOT_EVALUATED',
+      });
+      continue;
+    }
+
+    let page;
+    try {
+      page = await gateway.readPage(hit.pageId);
+    } catch {
+      report.coverage.failedReads++;
+      report.execution.status = 'PARTIAL';
+      report.execution.errors.push({ stage: 'page_fetch', code: 'PAGE_READ_FAILED' });
+      // A search hit that can no longer be read could be permission-revoked.
+      // Never return its identity/title in a diagnostic trace or browser view.
+      report.trace.push({
+        ...rankTrace,
+        fetchStatus: 'failed',
+        parseStatus: 'not_attempted',
+        legacyComparison: 'NOT_EVALUATED',
+      });
+      continue;
+    }
+
+    report.coverage.fetchedPages++;
+    const body = page?.body?.storage?.value;
+    // HTTP success does not imply that an analyzable document body was returned.
+    const text = typeof body === 'string' ? htmlToPlainText(body) : '';
+    if (!text.trim()) {
+      report.coverage.unusableBodies++;
+      report.execution.status = 'PARTIAL';
+      report.execution.errors.push({ stage: 'page_parse', code: 'UNUSABLE_BODY' });
+      report.trace.push({
+        ...rankTrace,
+        fetchStatus: 'fetched',
+        parseStatus: 'unusable_body',
         legacyComparison: 'NOT_EVALUATED',
       });
       continue;
     }
 
     try {
-      const page = await gateway.readPage(hit.pageId);
-      const runbook = parseRunbook(htmlToPlainText(page?.body?.storage?.value ?? ''));
+      const runbook = parseRunbook(text);
       const comparison = compareClaims(change, runbook);
-      report.coverage.fetchedPages++;
+      report.coverage.parsedPages++;
       report.trace.push({
         pageId: hit.pageId,
         title: page?.title ?? hit.title,
         url: hit.url,
-        searchRank: index + 1,
-        searchHit: true,
-        selectedForRead: true,
+        ...rankTrace,
         fetchStatus: 'fetched',
+        parseStatus: 'parsed',
         legacyComparison: comparison.status,
         // M1 evidence is unversioned and may lose section context.
         evidence: {
@@ -142,26 +194,26 @@ export async function runB0Diagnostic(issueKey, gateway, options = {}) {
         },
       });
     } catch {
-      report.coverage.failedReads++;
+      report.coverage.unusableBodies++;
       report.execution.status = 'PARTIAL';
-      report.execution.errors.push({ stage: 'page_fetch', code: 'PAGE_READ_FAILED' });
-      // Do not return the page identity/title from a hit whose fetch failed:
-      // access could have been revoked between CQL and page fetch.
+      report.execution.errors.push({ stage: 'page_parse', code: 'PARSE_FAILED' });
       report.trace.push({
-        searchRank: index + 1,
-        searchHit: true,
-        selectedForRead: true,
-        fetchStatus: 'failed',
+        ...rankTrace,
+        fetchStatus: 'fetched',
+        parseStatus: 'failed',
         legacyComparison: 'NOT_EVALUATED',
       });
     }
   }
 
-  report.decision = report.trace.some((row) =>
-    row.fetchStatus === 'fetched' &&
-    row.legacyComparison !== 'NOT_RELATED') ? 'LEGACY_RELATED_FOUND' : 'NO_LEGACY_RELATED_FOUND';
-  if (report.coverage.failedReads) {
-    report.coverage.limitations.push('One or more page reads failed; accessible evidence may be incomplete.');
+  const hasLegacyRelated = report.trace.some((row) =>
+    row.parseStatus === 'parsed' &&
+    !['NOT_RELATED', 'NOT_EVALUATED'].includes(row.legacyComparison));
+  report.decision = hasLegacyRelated
+    ? 'LEGACY_RELATED_FOUND'
+    : report.execution.status === 'PARTIAL' ? 'INDETERMINATE' : 'NO_LEGACY_RELATED_FOUND';
+  if (report.coverage.failedReads || report.coverage.unusableBodies) {
+    report.coverage.limitations.push('One or more page reads or parses were incomplete; relevant evidence may be missing.');
   }
   report.elapsedMs = Math.max(0, now() - start);
   return report;
