@@ -141,3 +141,41 @@ test('B0 browser projection exposes an abstention without unfiltered traces', as
   assert.equal(browser.queryTerm, null);
   assert.equal(browser.documents.length, 0);
 });
+
+
+test('B0 preserves raw query ranks separately from merged selection ranks', async () => {
+  const second = fixturePage('3001', 'Payment Ledger', '<p>Service: payment-gateway</p><p>Endpoint: /api/v1/payments</p>');
+  const report = await runB0Diagnostic('PAY-101', fixtureGateway({
+    pages: [sourcePage, sourcePage, second],
+  }));
+  assert.equal(report.coverage.returnedHits, 3);
+  assert.equal(report.coverage.uniqueHits, 2);
+  assert.deepEqual(report.trace[0].rawSearchRanks, [1, 2]);
+  assert.equal(report.trace[0].mergedRank, 1);
+  assert.deepEqual(report.trace[1].rawSearchRanks, [3]);
+  assert.equal(report.trace[1].mergedRank, 2);
+  assert.equal(report.trace[1].selectionRank, 2);
+});
+
+test('B0 does not classify a successful HTTP read with empty content as NOT_RELATED', async () => {
+  const empty = fixturePage('3002', 'Payment Empty Runbook', '');
+  const report = await runB0Diagnostic('PAY-101', fixtureGateway({ pages: [empty] }));
+  assert.equal(report.coverage.fetchedPages, 1);
+  assert.equal(report.coverage.parsedPages, 0);
+  assert.equal(report.coverage.unusableBodies, 1);
+  assert.equal(report.execution.status, 'PARTIAL');
+  assert.equal(report.decision, 'INDETERMINATE');
+  assert.equal(report.trace[0].parseStatus, 'unusable_body');
+  assert.equal(report.trace[0].legacyComparison, 'NOT_EVALUATED');
+  const browser = toPublicB0Report(report);
+  assert.equal(browser.documents.length, 0);
+  assert.equal(browser.coverage.failedOrSkippedReads, true);
+});
+
+test('B0 does not report an absence of related documents when every fetch fails', async () => {
+  const report = await runB0Diagnostic('PAY-101', fixtureGateway({ failPageId: sourcePage.id }));
+  assert.equal(report.execution.status, 'PARTIAL');
+  assert.equal(report.coverage.fetchedPages, 0);
+  assert.equal(report.coverage.failedReads, 1);
+  assert.equal(report.decision, 'INDETERMINATE');
+});
