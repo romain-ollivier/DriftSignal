@@ -20,6 +20,9 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [data, setData] = useState(null);
+  const [b0Data, setB0Data] = useState(null);
+  const [b0Busy, setB0Busy] = useState(false);
+  const [b0Error, setB0Error] = useState('');
   const [contextLoading, setContextLoading] = useState(true);
 
   useEffect(() => {
@@ -46,6 +49,22 @@ export default function App() {
     } finally { setBusy(false); }
   }
 
+  async function runB0() {
+    if (!issueKey) return;
+    setB0Busy(true);
+    setB0Data(null);
+    setB0Error('');
+    try {
+      const response = await invoke('scanB0', { issueKey });
+      if (!response?.ok) throw new Error(response?.message || 'Could not run B0.');
+      setB0Data(response.data);
+    } catch (err) {
+      setB0Error(err instanceof Error ? err.message : 'B0 diagnostic failed.');
+    } finally {
+      setB0Busy(false);
+    }
+  }
+
   return <main className="shell">
     <header className="topline"><div className="brand"><span className="logo">◈</span><span>DriftSignal</span></div><span className="prototype">TECHNICAL POC · V0.1</span></header>
     <section className="hero">
@@ -59,10 +78,29 @@ export default function App() {
         <div className="issue">{contextLoading ? 'Loading Jira context…' : (issueKey || 'Open DriftSignal from a Jira issue')}</div>
         <button disabled={!issueKey || busy} onClick={scan}>{busy ? 'Scanning…' : 'Scan documentation →'}</button>
       </div>
+      <p className="note">Discovery benchmark: compare the historical single-token Confluence search separately from the M1 scan.</p>
+      <button className="secondary" disabled={!issueKey || b0Busy || busy} onClick={runB0}>{b0Busy ? 'Running B0…' : 'Run B0 discovery diagnostic'}</button>
       {!issueKey && !contextLoading && <p className="note">Open a Jira issue and select Apps → DriftSignal. This Confluence screen is informational.</p>}
     </section>
     {error && <div className="message danger">{error}</div>}
     {!data && !error && <section className="placeholder"><span className="pulse">◎</span><h2>Ready to check for drift</h2><p>Run the scan to compare the issue against indexed Confluence pages.</p></section>}
+    {b0Error && <div className="message danger">{b0Error}</div>}
+    {b0Data && <section className="sourceCard">
+      <div className="sourceHead"><strong>B0 · Discovery diagnostic</strong><Status value={b0Data.status}/></div>
+      <p><strong>Actual Confluence query term:</strong> <code>{b0Data.queryTerm || 'Not executed'}</code></p>
+      <p><strong>Pages successfully read:</strong> {b0Data.coverage.fetchedPages} · <strong>Elapsed:</strong> {Math.round(b0Data.elapsedMs ?? 0)} ms</p>
+      <p><strong>Result:</strong> {b0Data.decision?.replaceAll('_', ' ')}</p>
+      {b0Data.documents?.map((doc) => <div className="finding" key={doc.pageId}>
+        <div className="sourceHead"><strong>{doc.title}</strong><Status value={doc.legacyComparison}/></div>
+        <div className="detail"><span>Jira evidence</span><code>{doc.jiraEvidence ?? 'No explicit endpoint evidence'}</code></div>
+        <div className="detail"><span>Confluence evidence</span><code>{doc.confluenceEvidence ?? 'No explicit endpoint evidence'}</code></div>
+        {doc.url && <button className="secondary" onClick={() => router.open(doc.url)}>Open source in Confluence ↗</button>}
+      </div>)}
+      {b0Data.coverage.readBudgetTruncated && <p className="note">Read budget reached: some search hits were not inspected.</p>}
+      {b0Data.coverage.failedOrSkippedReads && <p className="note">Some source reads could not be completed. Results are partial.</p>}
+      {b0Data.coverage.searchFailed && <p className="note">Confluence search failed. No coverage claim can be made.</p>}
+      <p className="note">{b0Data.note}</p>
+    </section>}
     {data && <>
       <section className={`summary ${MESSAGES[data.outcome]?.[2] || 'neutral'}`}>
         <div className="eyebrow">SCAN RESULT · {data.issueKey}</div>
