@@ -129,8 +129,8 @@ test('Read-only investigation shows the literal Not deployed statement, not the 
       description: 'Service: freight-core\nDeployment status: Not deployed',
     },
   });
-  // Base B1 may still normalize this incorrectly until isolated PR #3.
-  assert.equal(negated.context.deploymentState, 'deployed');
+  // Keep the test correct regardless of whether the isolated PR #3 fix
+  // has been merged: this panel displays the literal Jira declaration.
   const view = toPublicInvestigation({
     profile: negated,
     plan: { status: 'READY' },
