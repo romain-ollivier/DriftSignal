@@ -105,7 +105,7 @@ function mockSources(overrides={}){
       body:{storage:{value:'<p>Normal recovery route</p>'}},
     };},
     readAncestors:async()=>{calls.push('ancestors');return{
-      results:[{id:'5177345'},{id:'5013700'}],next:null,
+      results:[{id:'5177345',type:'page'},{id:'5013700',type:'folder'}],next:null,
     };},
   };
   return { calls,...base,...overrides};
@@ -192,4 +192,54 @@ test('Incomplete at exactly 100 ancestors fails closed', async () => {
     authorizeReviewSource({issueKey:source.issueKey,pageId:source.pageId,...m}),
     /ancestry/,
   );
+});
+
+
+test('Fail closed for a non-adjacent journal gap (r1, missing r2/r3, r4)',async()=>{
+  const mem=inMemoryStorage(); const journal=createPrivateReviewJournal(mem.storage);
+  await journal.begin({actorId:accountId,source,now});
+  const prefix=reviewKeyPrefix({accountId,issueKey:source.issueKey,pageId:source.pageId});
+  const r1=mem.values.get(prefix+'r000001');
+  mem.values.set(prefix+'r000004',{...r1,revision:4,
+    history:[...r1.history,{sequence:2,state:'NEEDS_EVIDENCE'},
+      {sequence:3,state:'NEEDS_EVIDENCE'},{sequence:4,state:'NEEDS_EVIDENCE'}]});
+  await assert.rejects(journal.read({actorId:accountId,source}),/Missing review revision/);
+  await assert.rejects(journal.decide({
+    actorId:accountId,source,expectedRevision:1,decision:'NEEDS_EVIDENCE',
+    reason:'Cannot use a damaged journal',now,
+  }),/Missing review revision/);
+  assert.equal(mem.values.has(prefix+'r000002'),false);
+});
+
+test('At revision 30 the historical review is displayed but no new decision is allowed',async()=>{
+  const mem=inMemoryStorage(); const journal=createPrivateReviewJournal(mem.storage);
+  let record=await journal.begin({actorId:accountId,source,now});
+  for(let i=1;i<30;i++){
+    record=await journal.decide(opinion(record));
+  }
+  assert.equal(record.revision,30);
+  assert.equal(record.canDecide,false);
+  const read=await journal.read({actorId:accountId,source});
+  assert.equal(read.revision,30);
+  assert.equal(read.canDecide,false);
+  await assert.rejects(journal.decide(opinion(record)),/history cap|limit exceeded/);
+});
+
+test('Require explicit current page and typed page root, allow intermediate folders',async()=>{
+  const valid=mockSources();assert.deepEqual(
+    await authorizeReviewSource({issueKey:source.issueKey,pageId:source.pageId,...valid}),
+    source,
+  );
+  const absentStatus=mockSources({readPage:async id=>({
+    id,spaceId:'5013508',version:{number:2},body:{storage:{value:'body'}},
+  })});
+  await assert.rejects(authorizeReviewSource({
+    issueKey:source.issueKey,pageId:source.pageId,...absentStatus,
+  }),/Current readable/);
+  const wrongRoot=mockSources({readAncestors:async()=>({
+    results:[{id:'5177345',type:'folder'},{id:'999',type:'page'}],next:null,
+  })});
+  await assert.rejects(authorizeReviewSource({
+    issueKey:source.issueKey,pageId:source.pageId,...wrongRoot,
+  }),/outside the controlled benchmark corpus/);
 });
