@@ -100,6 +100,9 @@ export function profileJiraChangeNarrative(issue) {
       if (profile.signals.length >= MAX_SIGNALS) break;
       const context = sentenceContext(text, match.index);
       if (EXCLUSION_RE.test(context.sentence) || QUOTED_DOC_RE.test(context.sentence)) continue;
+      // Do not silently discard URL query/fragment data from a candidate:
+      // the whole token is unsafe to treat as a validated endpoint signal.
+      if (/[?#]/.test(text[match.index + match[0].length] ?? '')) continue;
       const endpoint = safePath(match[1]);
       if (!endpoint) continue;
       const quote = context.sentence.slice(0, 240);
