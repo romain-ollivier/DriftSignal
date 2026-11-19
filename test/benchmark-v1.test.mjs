@@ -65,6 +65,14 @@ test('Rollback-only document is relevant but has NO incompatible instruction', (
   assert.equal(gold.incompatibleInstruction, 'no');
 });
 
+test('BMK-102 does not infer endpoint retirement from traffic migration wording', () => {
+  assert.equal(corpus.corpusRevision, '1.1');
+  const gold = scenario('BMK-102').annotations.find((annotation) => annotation.pageId === '10006');
+  assert.equal(gold.relevance, 'relevant');
+  assert.equal(gold.role, 'procedure_to_review');
+  assert.equal(gold.incompatibleInstruction, 'unknown');
+});
+
 test('A relevance rejection is distinguished from an instruction incompatibility', () => {
   const report = evaluateDiscoveryStages({
     corpus, scenario: scenario('BMK-101'), persona: 'engineer',
