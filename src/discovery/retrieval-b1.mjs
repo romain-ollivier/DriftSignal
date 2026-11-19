@@ -156,30 +156,6 @@ export async function runB1Retrieval(plan, gateway, options = {}) {
     candidate.paths.push(path);
   };
 
-  for (const link of plan.directLinks) {
-    if (typeof gateway.resolveDirectLink !== 'function') {
-      report.coverage.directLinksNotResolved++;
-      continue;
-    }
-    report.coverage.directLinksAttempted++;
-    try {
-      const resolved = await gateway.resolveDirectLink(link.url);
-      if (resolved?.sameTenant !== true || !validPageId(resolved.pageId)) {
-        report.coverage.directLinksNotResolved++;
-        continue;
-      }
-      add(resolved.siteId, resolved.pageId, null, link.url, {
-        kind: 'direct_link',
-        operationId: link.id,
-        origins: link.origins,
-      });
-    } catch {
-      report.coverage.directLinksNotResolved++;
-      report.execution.status = 'PARTIAL';
-      report.execution.errors.push(failure('direct_link', 'DIRECT_LINK_RESOLVE_FAILED', link.id));
-    }
-  }
-
   const queries = plan.queries.slice(0, maxCqlCalls);
   for (const intent of queries) {
     const started = now();
@@ -222,6 +198,33 @@ export async function runB1Retrieval(plan, gateway, options = {}) {
         hasMore: null,
         elapsedMs: Math.max(0, now() - started),
       });
+    }
+  }
+
+
+  // CQL responses establish the authoritative tenant origin before links are resolved.
+  // Candidate selection still prioritizes verified direct links over search hits.
+  for (const link of plan.directLinks) {
+    if (typeof gateway.resolveDirectLink !== 'function') {
+      report.coverage.directLinksNotResolved++;
+      continue;
+    }
+    report.coverage.directLinksAttempted++;
+    try {
+      const resolved = await gateway.resolveDirectLink(link.url);
+      if (resolved?.sameTenant !== true || !validPageId(resolved.pageId)) {
+        report.coverage.directLinksNotResolved++;
+        continue;
+      }
+      add(resolved.siteId, resolved.pageId, null, link.url, {
+        kind: 'direct_link',
+        operationId: link.id,
+        origins: link.origins,
+      });
+    } catch {
+      report.coverage.directLinksNotResolved++;
+      report.execution.status = 'PARTIAL';
+      report.execution.errors.push(failure('direct_link', 'DIRECT_LINK_RESOLVE_FAILED', link.id));
     }
   }
 
