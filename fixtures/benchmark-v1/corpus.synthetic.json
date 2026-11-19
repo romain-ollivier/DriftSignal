@@ -1,0 +1,906 @@
+{
+  "schemaVersion": "1.0",
+  "type": "fully_synthetic",
+  "source": "invented for testing; no Atlassian tenant data or production labels",
+  "siteId": "synthetic://driftsignal-benchmark",
+  "personas": [
+    "engineer",
+    "limited"
+  ],
+  "annotationContract": {
+    "relevance": [
+      "relevant",
+      "not_relevant"
+    ],
+    "role": [
+      "procedure_to_review",
+      "context",
+      "irrelevant"
+    ],
+    "incompatibleInstruction": [
+      "yes",
+      "no",
+      "unknown",
+      "not_applicable"
+    ],
+    "note": "Labels are independent axes; 'relevant' does NOT imply an incompatible instruction. Holdout here is only reserved validation, not a blind private benchmark."
+  },
+  "documents": [
+    {
+      "pageId": "10001",
+      "title": "Payment Gateway Recovery Runbook",
+      "body": "<h1>Recovery</h1><p>Service: payment-gateway</p><p>Endpoint: /api/v1/payments</p><p>Normal operations: restart on v1 until documentation is updated.</p>",
+      "accessibleTo": [
+        "engineer",
+        "limited"
+      ]
+    },
+    {
+      "pageId": "10002",
+      "title": "Payment Gateway Rollback Procedure",
+      "body": "<h1>Rollback only</h1><p>Service: payment-gateway</p><p>Rollback endpoint: /api/v1/payments</p><p>Only use this when rolling back from v2.</p>",
+      "accessibleTo": [
+        "engineer",
+        "limited"
+      ]
+    },
+    {
+      "pageId": "10003",
+      "title": "Payments Platform Architecture",
+      "body": "<p>Service: payment-gateway</p><p>Current and historic endpoints: /api/v1/payments, /api/v2/payments</p><p>System dependencies; not an operational runbook.</p>",
+      "accessibleTo": [
+        "engineer",
+        "limited"
+      ]
+    },
+    {
+      "pageId": "10004",
+      "title": "Billing Service Health Check",
+      "body": "<p>Service: billing-api</p><p>Endpoint: /health</p><p>Billing-specific monitoring procedure.</p>",
+      "accessibleTo": [
+        "engineer",
+        "limited"
+      ]
+    },
+    {
+      "pageId": "10005",
+      "title": "Inventory Health Monitor",
+      "body": "<p>Service: inventory-service</p><p>Endpoint: /health</p><p>Inventory monitor runbook.</p>",
+      "accessibleTo": [
+        "engineer",
+        "limited"
+      ]
+    },
+    {
+      "pageId": "10006",
+      "title": "Orchid Operations Handbook",
+      "body": "<h2>Service recovery</h2><p>Old traffic host: legacy-settle.example.internal</p><p>Legacy route: /settlement/v1/route</p><p>For standard settlement recovery, retry the legacy route.</p>",
+      "accessibleTo": [
+        "engineer",
+        "limited"
+      ]
+    },
+    {
+      "pageId": "10007",
+      "title": "Settlement Core Service Home",
+      "body": "<p>Component: Settlement Core</p><p>Operational procedures are described in Orchid Operations Handbook.</p>",
+      "accessibleTo": [
+        "engineer",
+        "limited"
+      ]
+    },
+    {
+      "pageId": "10008",
+      "title": "Settlement Dataflow Architecture",
+      "body": "<p>Component: Settlement Core</p><p>Architecture of the settlement processing chain and dependencies.</p>",
+      "accessibleTo": [
+        "engineer",
+        "limited"
+      ]
+    },
+    {
+      "pageId": "10009",
+      "title": "Auth Key Rotation Runbook",
+      "body": "<p>Service: identity-auth</p><p>Procedure for key rotation and incident recovery.</p>",
+      "accessibleTo": [
+        "engineer",
+        "limited"
+      ]
+    },
+    {
+      "pageId": "10010",
+      "title": "Auth Service Deployment Notes",
+      "body": "<p>Component: IAM</p><p>Historical notes and maintenance windows.</p>",
+      "accessibleTo": [
+        "engineer",
+        "limited"
+      ]
+    },
+    {
+      "pageId": "10011",
+      "title": "Voyager Scheduler Recovery Guide",
+      "body": "<h2>Scheduler recovery</h2><p>For the scheduled Voyager jobs, restart the queue worker after the migration.</p>",
+      "accessibleTo": [
+        "engineer",
+        "limited"
+      ]
+    },
+    {
+      "pageId": "10012",
+      "title": "Voyager Scheduler Service Catalog",
+      "body": "<p>Component: Voyager Scheduler</p><p>Recovery guide: Voyager Scheduler Recovery Guide.</p>",
+      "accessibleTo": [
+        "engineer",
+        "limited"
+      ]
+    },
+    {
+      "pageId": "10013",
+      "title": "Generic Change Management Template",
+      "body": "<p>Use this template to request changes in any service.</p>",
+      "accessibleTo": [
+        "engineer",
+        "limited"
+      ]
+    },
+    {
+      "pageId": "10014",
+      "title": "Settlement Emergency Failover Procedure",
+      "body": "<p>Service: settlement-gateway</p><p>Endpoint: /settlement/v1/route</p><p>For normal production recovery, switch traffic back to v1.</p>",
+      "accessibleTo": [
+        "engineer"
+      ]
+    },
+    {
+      "pageId": "10015",
+      "title": "Legacy API Archive (Historical Only)",
+      "body": "<p>Archive of retired payment and settlement endpoints, including /api/v1/payments.</p><p>Historical reference only. Never use as an active procedure.</p>",
+      "accessibleTo": [
+        "engineer",
+        "limited"
+      ]
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "BMK-101",
+      "split": "development",
+      "family": "structured",
+      "signalWhere": "jira_explicit",
+      "successCriteria": "Retrieve active recovery runbook while retaining rollback/context pages as relevant but non-conflicting",
+      "issue": {
+        "key": "BMK-101",
+        "fields": {
+          "summary": "Migrate payment gateway to API v2",
+          "description": "Service: payment-gateway\nOld endpoint: /api/v1/payments\nNew endpoint: /api/v2/payments\nDeployment status: Deployed to production",
+          "components": []
+        }
+      },
+      "annotations": [
+        {
+          "pageId": "10001",
+          "relevance": "relevant",
+          "role": "procedure_to_review",
+          "incompatibleInstruction": "yes",
+          "reason": "Normal operation still prescribes v1"
+        },
+        {
+          "pageId": "10002",
+          "relevance": "relevant",
+          "role": "procedure_to_review",
+          "incompatibleInstruction": "no",
+          "reason": "v1 appears only as rollback"
+        },
+        {
+          "pageId": "10003",
+          "relevance": "relevant",
+          "role": "context",
+          "incompatibleInstruction": "no",
+          "reason": "Architecture offers migration context"
+        },
+        {
+          "pageId": "10004",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10005",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10006",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10007",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10008",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10009",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10010",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10011",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10012",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10013",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10014",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10015",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        }
+      ]
+    },
+    {
+      "id": "BMK-102",
+      "split": "development",
+      "family": "natural_language",
+      "signalWhere": "jira_narrative",
+      "successCriteria": "Discover a relevant operational document despite unstructured descriptions and a different title",
+      "issue": {
+        "key": "BMK-102",
+        "fields": {
+          "summary": "Orchid settlement traffic switched over",
+          "description": "We moved the settlement traffic last night. The old route /settlement/v1/route was on legacy-settle.example.internal. Please verify the recovery playbook.",
+          "components": []
+        }
+      },
+      "annotations": [
+        {
+          "pageId": "10001",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10002",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10003",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10004",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10005",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10006",
+          "relevance": "relevant",
+          "role": "procedure_to_review",
+          "incompatibleInstruction": "yes",
+          "reason": "Standard recovery still uses retired route"
+        },
+        {
+          "pageId": "10007",
+          "relevance": "relevant",
+          "role": "context",
+          "incompatibleInstruction": "unknown",
+          "reason": "Service catalog is useful context"
+        },
+        {
+          "pageId": "10008",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10009",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10010",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10011",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10012",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10013",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10014",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10015",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        }
+      ]
+    },
+    {
+      "id": "BMK-103",
+      "split": "development",
+      "family": "indirect_relation",
+      "signalWhere": "confluence_indirect",
+      "successCriteria": "Identify that context resides in service catalog then linked runbook, without compulsory Jira-runbook mapping",
+      "issue": {
+        "key": "BMK-103",
+        "fields": {
+          "summary": "Voyager scheduler migration",
+          "description": "Could someone verify our job recovery procedure after the scheduler move?",
+          "components": [
+            {
+              "name": "Voyager Scheduler"
+            }
+          ]
+        }
+      },
+      "annotations": [
+        {
+          "pageId": "10001",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10002",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10003",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10004",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10005",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10006",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10007",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10008",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10009",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10010",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10011",
+          "relevance": "relevant",
+          "role": "procedure_to_review",
+          "incompatibleInstruction": "unknown",
+          "reason": "Potentially affected scheduler procedure; needs verification"
+        },
+        {
+          "pageId": "10012",
+          "relevance": "relevant",
+          "role": "context",
+          "incompatibleInstruction": "no",
+          "reason": "Service catalog points to the recovery guide"
+        },
+        {
+          "pageId": "10013",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10014",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10015",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        }
+      ]
+    },
+    {
+      "id": "BMK-104",
+      "split": "development",
+      "family": "insufficient_context",
+      "signalWhere": "absent",
+      "successCriteria": "Abstain rather than invent a service or related runbook",
+      "issue": {
+        "key": "BMK-104",
+        "fields": {
+          "summary": "Review docs",
+          "description": "Something changed. Please check documentation.",
+          "components": []
+        }
+      },
+      "annotations": [
+        {
+          "pageId": "10001",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10002",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10003",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10004",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10005",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10006",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10007",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10008",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10009",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10010",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10011",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10012",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10013",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10014",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10015",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        }
+      ]
+    },
+    {
+      "id": "BMK-105",
+      "split": "validation",
+      "family": "generic_endpoint_and_rollback",
+      "signalWhere": "jira_service_only",
+      "successCriteria": "Do not assert a drift from /health alone; preserve relevant architecture or rollback context where justified",
+      "issue": {
+        "key": "BMK-105",
+        "fields": {
+          "summary": "Payment health probe update",
+          "description": "Service: payment-gateway\nNew endpoint: /health\nDeployment status: Planned",
+          "components": []
+        }
+      },
+      "annotations": [
+        {
+          "pageId": "10001",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10002",
+          "relevance": "relevant",
+          "role": "context",
+          "incompatibleInstruction": "no",
+          "reason": "Rollback context may help but does not prove incompatibility"
+        },
+        {
+          "pageId": "10003",
+          "relevance": "relevant",
+          "role": "context",
+          "incompatibleInstruction": "unknown",
+          "reason": "Architecture is related context, not procedure to fix"
+        },
+        {
+          "pageId": "10004",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10005",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10006",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10007",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10008",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10009",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10010",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10011",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10012",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10013",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10014",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10015",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        }
+      ]
+    },
+    {
+      "id": "BMK-106",
+      "split": "validation",
+      "family": "permissions",
+      "signalWhere": "jira_explicit",
+      "successCriteria": "Respect accessible evidence and avoid disclosing the restricted failover procedure to limited users",
+      "issue": {
+        "key": "BMK-106",
+        "fields": {
+          "summary": "Settlement gateway migration",
+          "description": "Service: settlement-gateway\nOld endpoint: /settlement/v1/route\nNew endpoint: /settlement/v2/route\nDeployment status: Deployed to production",
+          "components": [
+            {
+              "name": "Settlement Core"
+            }
+          ]
+        }
+      },
+      "annotations": [
+        {
+          "pageId": "10001",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10002",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10003",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10004",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10005",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10006",
+          "relevance": "relevant",
+          "role": "procedure_to_review",
+          "incompatibleInstruction": "yes",
+          "reason": "Legacy standard recovery route still active"
+        },
+        {
+          "pageId": "10007",
+          "relevance": "relevant",
+          "role": "context",
+          "incompatibleInstruction": "no",
+          "reason": "Service catalog context"
+        },
+        {
+          "pageId": "10008",
+          "relevance": "relevant",
+          "role": "context",
+          "incompatibleInstruction": "no",
+          "reason": "Architecture context"
+        },
+        {
+          "pageId": "10009",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10010",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10011",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10012",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10013",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        },
+        {
+          "pageId": "10014",
+          "relevance": "relevant",
+          "role": "procedure_to_review",
+          "incompatibleInstruction": "yes",
+          "reason": "Restricted operational procedure still references v1"
+        },
+        {
+          "pageId": "10015",
+          "relevance": "not_relevant",
+          "role": "irrelevant",
+          "incompatibleInstruction": "not_applicable",
+          "reason": "No grounded relationship to this change in this synthetic scenario"
+        }
+      ]
+    }
+  ]
+}
