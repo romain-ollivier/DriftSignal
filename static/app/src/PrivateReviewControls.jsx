@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { invoke } from '@forge/bridge';
 
 const CHOICES = [
@@ -14,6 +14,11 @@ const CHOICES = [
 export default function PrivateReviewControls({
   issueKey, pageId, pageVersion, jiraUpdated, onAccessUnverified,
 }) {
+  const active = useRef(true);
+  useEffect(() => {
+    active.current = true;
+    return () => { active.current = false; };
+  }, []);
   const [review, setReview] = useState(null);
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -22,7 +27,7 @@ export default function PrivateReviewControls({
   const [reason, setReason] = useState('');
 
   async function invokeReview(resolver, extra = {}) {
-    if (busy) return;
+    if (busy || !active.current) return;
     setBusy(true); setError('');
     try {
       const viewed = {
@@ -34,11 +39,13 @@ export default function PrivateReviewControls({
       const response = await invoke(resolver, {
         issueKey, pageId, ...(isWrite ? { viewed } : {}), ...extra,
       });
+      if (!active.current) return;
       if (!response?.ok) throw new Error(response?.message || 'Private review unavailable.');
       setReview(response.data ?? null);
       setLoaded(true);
       setReason('');
     } catch (cause) {
+      if (!active.current) return;
       // An authorization error, stale version or storage failure must not
       // leave reviewer notes or Confluence quotes visible in this open tab.
       setReview(null);
@@ -47,7 +54,7 @@ export default function PrivateReviewControls({
       setError(cause instanceof Error ? cause.message : 'Private review unavailable.');
       onAccessUnverified?.();
     } finally {
-      setBusy(false);
+      if (active.current) setBusy(false);
     }
   }
 
