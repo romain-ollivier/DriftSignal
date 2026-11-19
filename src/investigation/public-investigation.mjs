@@ -1,5 +1,7 @@
 import { htmlToPlainText } from '../core.mjs';
 import { toPublicB1Retrieval } from '../discovery/public-retrieval-b1.mjs';
+import { linkedAdfBlocks } from './adf-source-guards.mjs';
+import { trustedConfluenceOrigin } from '../discovery/confluence-cql.mjs';
 
 const MAX_EXCERPT = 260;
 const EXPOSED_FAMILIES = new Set([
@@ -43,24 +45,22 @@ export function evidenceFromReadablePage(page, profile) {
 
 // Search-hit links are untrusted. Rebuild only a canonical page link whose
 // page ID exactly matches the page already fetched as the invoking user.
-function authorizedPageUrl(url, pageId) {
-  try {
-    const parsed = new URL(url);
-    if (parsed.protocol !== 'https:' ||
-        !parsed.hostname.endsWith('.atlassian.net') ||
-        parsed.username || parsed.password ||
-        parsed.pathname !== '/wiki/pages/viewpage.action' ||
-        parsed.searchParams.get('pageId') !== String(pageId)) return null;
-    return parsed.origin + '/wiki/pages/viewpage.action?pageId=' + encodeURIComponent(pageId);
-  } catch { return null; }
+function authorizedPageUrl(origin, pageId) {
+  const trusted = trustedConfluenceOrigin(origin);
+  if (!trusted || !/^[0-9]{1,32}$/.test(String(pageId))) return null;
+  // The origin comes only from the successful asUser CQL gateway,
+  // never the search-hit URL or a client-supplied page link.
+  return trusted + '/wiki/pages/viewpage.action?pageId=' + encodeURIComponent(pageId);
 }
+
 // Jira text can mention a Confluence page that the user cannot open.
 // Never convert those Jira-only links into supposedly verified page evidence.
 function containsUnverifiedPageReference(value) {
   return /(?:https?:\/\/\S+\.atlassian\.net\/wiki\/|\bpageId\s*=|\/wiki\/(?:spaces|pages)\/)/i.test(String(value ?? ''));
 }
 
-function publicJiraEvidence(profile) {
+function publicJiraEvidence(profile, issue) {
+  const linkedBlocks = linkedAdfBlocks(issue);
   return (profile?.signals ?? [])
     .filter(signal => EXPOSED_FAMILIES.has(signal.family))
     .slice(0, 25)
@@ -72,6 +72,7 @@ function publicJiraEvidence(profile) {
         ? (signal.rawValue ?? '')
         : (signal.normalizedValue ?? '')).slice(0, 150);
       const rawQuote = String(signal.source?.quote ?? '');
+      const mixedAdfLink = linkedBlocks.has(signal.source?.path);
       const linkMention = signal.family === 'explicit_link' ||
         containsUnverifiedPageReference(value) || containsUnverifiedPageReference(rawQuote);
       // The legacy profiler can truncate long quotes. Do not claim the
@@ -86,7 +87,7 @@ function publicJiraEvidence(profile) {
         extraction: signal.extraction ?? 'explicit',
         field: signal.source?.field ?? null,
         path: signal.source?.path ?? null,
-        quote: !linkMention && quoteContainsValue ? rawQuote.slice(0, 240) : null,
+        quote: !linkMention && !mixedAdfLink && quoteContainsValue ? rawQuote.slice(0, 240) : null,
       };
     });
 }
@@ -96,9 +97,10 @@ function publicJiraEvidence(profile) {
  * The evidence map is populated after successful asUser reads.
  * Never provide raw candidate identities or bodies in the UI.
  */
-export function toPublicInvestigation({ profile, plan, retrieval, authorizedPageEvidence, scoped }) {
+export function toPublicInvestigation({ profile, issue, plan, retrieval, authorizedPageEvidence, scoped }) {
   const safe = toPublicB1Retrieval(retrieval);
   const evidence = authorizedPageEvidence ?? new Map();
+  const readableDocs = safe.documents.filter(doc => evidence.has(doc.pageId));
   return {
     schemaVersion: '1.0',
     mode: 'READ_ONLY_INVESTIGATION',
@@ -109,16 +111,22 @@ export function toPublicInvestigation({ profile, plan, retrieval, authorizedPage
     planStatus: plan?.status ?? 'INSUFFICIENT_SEARCH_SIGNALS',
     scope: scoped ? 'CONTROLLED_DSBMK_CORPUS' : 'STANDARD_USER_SEARCH',
     status: safe.status,
-    coverage: safe.coverage,
-    jiraEvidence: publicJiraEvidence(profile),
-    documents: safe.documents.map(doc => ({
-      ...doc,
-      url: authorizedPageUrl(doc.url, doc.pageId),
-      contentEvidence: evidence.get(doc.pageId) ?? {
-        pageVersion: null, quote: null, quoteType: 'none',
-      },
-      reviewStatus: 'NOT_ASSESSED',
-    })),
+    coverage: { ...safe.coverage, usableDocuments: readableDocs.length },
+    jiraEvidence: publicJiraEvidence(profile, issue),
+    documents: readableDocs.map(doc => {
+      const verified = evidence.get(doc.pageId);
+      return {
+        ...doc,
+        title: verified.pageTitle ?? null,
+        url: authorizedPageUrl(verified.siteOrigin, doc.pageId),
+        contentEvidence: {
+          pageVersion: verified.pageVersion ?? null,
+          quote: verified.quote ?? null,
+          quoteType: verified.quoteType ?? 'none',
+        },
+        reviewStatus: 'NOT_ASSESSED',
+      };
+    }),
     note: 'These documents were found and read under the invoking Atlassian user. A quote is a source excerpt, not proof of relevance, incompatibility or endpoint retirement. No review decision is saved or page edited.',
   };
 }
