@@ -40,6 +40,26 @@ export function evidenceFromReadablePage(page, profile) {
   };
 }
 
+
+// Search-hit links are untrusted. Rebuild only a canonical page link whose
+// page ID exactly matches the page already fetched as the invoking user.
+function authorizedPageUrl(url, pageId) {
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== 'https:' ||
+        !parsed.hostname.endsWith('.atlassian.net') ||
+        parsed.username || parsed.password ||
+        parsed.pathname !== '/wiki/pages/viewpage.action' ||
+        parsed.searchParams.get('pageId') !== String(pageId)) return null;
+    return parsed.origin + '/wiki/pages/viewpage.action?pageId=' + encodeURIComponent(pageId);
+  } catch { return null; }
+}
+// Jira text can mention a Confluence page that the user cannot open.
+// Never convert those Jira-only links into supposedly verified page evidence.
+function containsUnverifiedPageReference(value) {
+  return /(?:https?:\/\/\S+\.atlassian\.net\/wiki\/|\bpageId\s*=|\/wiki\/(?:spaces|pages)\/)/i.test(String(value ?? ''));
+}
+
 function publicJiraEvidence(profile) {
   return (profile?.signals ?? [])
     .filter(signal => EXPOSED_FAMILIES.has(signal.family))
@@ -52,6 +72,8 @@ function publicJiraEvidence(profile) {
         ? (signal.rawValue ?? '')
         : (signal.normalizedValue ?? '')).slice(0, 150);
       const rawQuote = String(signal.source?.quote ?? '');
+      const linkMention = signal.family === 'explicit_link' ||
+        containsUnverifiedPageReference(value) || containsUnverifiedPageReference(rawQuote);
       // The legacy profiler can truncate long quotes. Do not claim the
       // resulting excerpt proves an endpoint if it omits the literal value.
       const quoteContainsValue = rawQuote.toLowerCase().includes(
@@ -60,11 +82,11 @@ function publicJiraEvidence(profile) {
       return {
         family: signal.family,
         role: signal.role ?? 'unknown',
-        value,
+        value: linkMention ? 'Confluence link mentioned in Jira (target not verified)' : value,
         extraction: signal.extraction ?? 'explicit',
         field: signal.source?.field ?? null,
         path: signal.source?.path ?? null,
-        quote: quoteContainsValue ? rawQuote.slice(0, 240) : null,
+        quote: !linkMention && quoteContainsValue ? rawQuote.slice(0, 240) : null,
       };
     });
 }
@@ -91,6 +113,7 @@ export function toPublicInvestigation({ profile, plan, retrieval, authorizedPage
     jiraEvidence: publicJiraEvidence(profile),
     documents: safe.documents.map(doc => ({
       ...doc,
+      url: authorizedPageUrl(doc.url, doc.pageId),
       contentEvidence: evidence.get(doc.pageId) ?? {
         pageVersion: null, quote: null, quoteType: 'none',
       },
