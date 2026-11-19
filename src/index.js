@@ -17,6 +17,7 @@ import { evidenceFromReadablePage, toPublicInvestigation } from './investigation
 import { authorizeReviewSource } from './investigation/authorize-review-source.mjs';
 import { createPrivateReviewJournal } from './investigation/review-journal.mjs';
 import { privateReviewStorage } from './investigation/forge-kvs-storage.mjs';
+import { assertViewedSource } from './investigation/viewed-source.mjs';
 
 const Resolver = ResolverModule.default ?? ResolverModule;
 const resolver = new Resolver();
@@ -220,6 +221,8 @@ resolver.define('beginPrivateReview', async ({ payload, context }) => {
   try {
     const actorId = authenticatedReviewActor(context);
     const source = await currentAuthorizedReviewSource(payload?.issueKey, payload?.pageId);
+    // Browser's displayed version is a precondition, not trusted authority.
+    assertViewedSource(source, payload?.viewed);
     const review = await reviewJournal.begin({ actorId, source, now: new Date().toISOString() });
     return { ok: true, data: review };
   } catch {
@@ -230,6 +233,7 @@ resolver.define('decidePrivateReview', async ({ payload, context }) => {
   try {
     const actorId = authenticatedReviewActor(context);
     const source = await currentAuthorizedReviewSource(payload?.issueKey, payload?.pageId);
+    assertViewedSource(source, payload?.viewed);
     const review = await reviewJournal.decide({
       actorId, source, now: new Date().toISOString(),
       expectedRevision: payload?.expectedRevision,
