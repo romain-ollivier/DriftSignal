@@ -11,6 +11,8 @@ import { planDiscoveryQueries } from './discovery/query-planner.mjs';
 import { runB1Retrieval } from './discovery/retrieval-b1.mjs';
 import { toPublicB1Retrieval } from './discovery/public-retrieval-b1.mjs';
 import { cqlFromIntent, normalizeCqlResponse, resolveDirectPage } from './discovery/confluence-cql.mjs';
+import { LIVE_BENCHMARK, isBenchmarkIssueKey, scopedBenchmarkCql } from './benchmark/live-scope.mjs';
+import { toPublicLiveBenchmark } from './benchmark/public-live-report.mjs';
 
 const Resolver = ResolverModule.default ?? ResolverModule;
 const resolver = new Resolver();
@@ -24,8 +26,9 @@ const gateway = {
     );
     return requireOk(response, 'Jira');
   },
-  async searchPages(token) {
-    const cql = `type=page AND text ~ "${token}"`;
+  async searchPages(token, options = {}) {
+    const baseCql = `type=page AND text ~ "${token}"`;
+    const cql = options.scoped === true ? scopedBenchmarkCql(baseCql) : baseCql;
     const response = await api.asUser().requestConfluence(
       route`/wiki/rest/api/search?cql=${cql}&limit=20`,
       { headers: { Accept: 'application/json' } },
@@ -57,11 +60,12 @@ const gateway = {
  * Forge-only adapter: Confluence operations run as the invoking user.
  * Every resolver invocation creates its own verified-tenant scope.
  */
-function createB1Gateway() {
+function createB1Gateway({ scoped = false } = {}) {
   let verifiedOrigin = null;
   return {
     async searchConfluence(intent, { limit }) {
-      const cql = cqlFromIntent(intent);
+      const baseCql = cqlFromIntent(intent);
+      const cql = scoped ? scopedBenchmarkCql(baseCql) : baseCql;
       const response = await api.asUser().requestConfluence(
         route`/wiki/rest/api/search?cql=${cql}&limit=${limit}`,
         { headers: { Accept: 'application/json' } },
@@ -128,6 +132,69 @@ resolver.define('scanB1', async ({ payload }) => {
   } catch {
     // Never expose raw search errors, candidate hits or document bodies.
     return { ok: false, message: 'B1 discovery diagnostic failed.' };
+  }
+});
+
+// Benchmark-only, explicit evaluation mode. Never alter the original M1, B0
+// or B1 resolver semantics. Only six frozen DSBENCH synthetic issues qualify.
+// The scope is fixed on the server (never derived from browser input).
+resolver.define('scanBenchmarkB0', async ({ payload }) => {
+  try {
+    if (!isBenchmarkIssueKey(payload?.issueKey)) throw new Error('Not a benchmark case.');
+    const runStarted = performance.now();
+    let searchElapsedMs = null;
+    const diagnostic = await runB0Diagnostic(payload.issueKey, {
+      ...gateway,
+      async searchPages(token) {
+        const started = performance.now();
+        try {
+          return await gateway.searchPages(token, { scoped: true });
+        } finally {
+          searchElapsedMs = Math.max(0, performance.now() - started);
+        }
+      },
+    }, { readBudget: LIVE_BENCHMARK.readBudget });
+    return {
+      ok: true,
+      data: toPublicLiveBenchmark(toPublicB0Report(diagnostic), diagnostic, {
+        b0SearchElapsedMs: searchElapsedMs,
+        elapsedMs: Math.max(0, performance.now() - runStarted),
+      }),
+    };
+  } catch {
+    return { ok: false, message: 'Scoped B0 benchmark failed.' };
+  }
+});
+
+resolver.define('scanBenchmarkB1', async ({ payload }) => {
+  try {
+    if (!isBenchmarkIssueKey(payload?.issueKey)) throw new Error('Not a benchmark case.');
+    const runStarted = performance.now();
+    const issue = await gateway.readIssue(payload.issueKey);
+    const profile = profileJiraChange(issue);
+    // For this synthetic corpus no Jira issue contains a Confluence link.
+    // Disallow unverified links in benchmark-only scope until their ancestry
+    // can be verified; otherwise a link could escape the fixed corpus.
+    const plan = planDiscoveryQueries(profile, {
+      maxCqlQueries: LIVE_BENCHMARK.maxCqlCalls,
+      maxDirectLinks: 0,
+    });
+    const retrieval = await runB1Retrieval(plan, createB1Gateway({ scoped: true }), {
+      maxCqlCalls: LIVE_BENCHMARK.maxCqlCalls,
+      readBudget: LIVE_BENCHMARK.readBudget,
+      searchLimit: LIVE_BENCHMARK.searchLimit,
+    });
+    return {
+      ok: true,
+      data: toPublicLiveBenchmark(toPublicB1Retrieval(retrieval), retrieval, {
+        plannedSearches: plan.queries.length,
+        inputQuality: profile.dataQuality.level,
+        planStatus: plan.status,
+        elapsedMs: Math.max(0, performance.now() - runStarted),
+      }),
+    };
+  } catch {
+    return { ok: false, message: 'Scoped B1 benchmark failed.' };
   }
 });
 
