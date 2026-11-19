@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { invoke, view, router } from '@forge/bridge';
 import InvestigationPanel from './InvestigationPanel.jsx';
 
@@ -18,6 +18,8 @@ const Status = ({ value }) => {
 
 export default function App() {
   const [issueKey, setIssueKey] = useState('');
+  const [securityEpoch, setSecurityEpoch] = useState(0);
+  const securityVersion = useRef(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [data, setData] = useState(null);
@@ -45,19 +47,36 @@ export default function App() {
     return () => { active = false; };
   }, []);
 
+  // All document-bearing panels share the same evidence security epoch.
+  // A failed source reauthorization clears M1, B0/B1, benchmarks and the
+  // investigation together, and invalidates every in-flight response.
+  function invalidateAllEvidence(expectedEpoch) {
+    if (securityVersion.current !== expectedEpoch) return;
+    securityVersion.current += 1;
+    setSecurityEpoch(securityVersion.current);
+    setData(null); setB0Data(null); setB1Data(null);
+    setBenchResults({ B0: null, B1: null });
+    setBusy(false); setB0Busy(false); setB1Busy(false); setBenchBusy(false);
+    setError(''); setB0Error(''); setB1Error(''); setBenchError('');
+  }
+
   async function scan() {
+    const requestEpoch = securityVersion.current;
+    const isCurrent = () => securityVersion.current === requestEpoch;
     if (!issueKey) return;
     setBusy(true); setError(''); setData(null);
     try {
       const response = await invoke('scan', { issueKey });
       if (!response?.ok) throw new Error(response?.message || 'Could not run the scan.');
-      setData(response.data);
+      if (isCurrent()) setData(response.data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Scan failed.');
-    } finally { setBusy(false); }
+      if (isCurrent()) setError(err instanceof Error ? err.message : 'Scan failed.');
+    } finally { if (isCurrent()) setBusy(false); }
   }
 
   async function runB0() {
+    const requestEpoch = securityVersion.current;
+    const isCurrent = () => securityVersion.current === requestEpoch;
     if (!issueKey) return;
     setB0Busy(true);
     setB0Data(null);
@@ -65,15 +84,17 @@ export default function App() {
     try {
       const response = await invoke('scanB0', { issueKey });
       if (!response?.ok) throw new Error(response?.message || 'Could not run B0.');
-      setB0Data(response.data);
+      if (isCurrent()) setB0Data(response.data);
     } catch (err) {
-      setB0Error(err instanceof Error ? err.message : 'B0 diagnostic failed.');
+      if (isCurrent()) setB0Error(err instanceof Error ? err.message : 'B0 diagnostic failed.');
     } finally {
-      setB0Busy(false);
+      if (isCurrent()) setB0Busy(false);
     }
   }
 
   async function runB1() {
+    const requestEpoch = securityVersion.current;
+    const isCurrent = () => securityVersion.current === requestEpoch;
     if (!issueKey) return;
     setB1Busy(true);
     setB1Data(null);
@@ -81,26 +102,28 @@ export default function App() {
     try {
       const response = await invoke('scanB1', { issueKey });
       if (!response?.ok) throw new Error(response?.message || 'Could not run B1.');
-      setB1Data(response.data);
+      if (isCurrent()) setB1Data(response.data);
     } catch (err) {
-      setB1Error(err instanceof Error ? err.message : 'B1 diagnostic failed.');
+      if (isCurrent()) setB1Error(err instanceof Error ? err.message : 'B1 diagnostic failed.');
     } finally {
-      setB1Busy(false);
+      if (isCurrent()) setB1Busy(false);
     }
   }
 
   async function runScopedBenchmark(variant) {
+    const requestEpoch = securityVersion.current;
+    const isCurrent = () => securityVersion.current === requestEpoch;
     if (!isBenchmarkTicket || benchBusy) return;
     setBenchBusy(true); setBenchError('');
     try {
       const method = variant === 'B0' ? 'scanBenchmarkB0' : 'scanBenchmarkB1';
       const response = await invoke(method, { issueKey });
       if (!response?.ok) throw new Error(response?.message || 'Benchmark failed.');
-      setBenchResults((previous) => ({ ...previous, [variant]: response.data }));
+      if (isCurrent()) setBenchResults((previous) => ({ ...previous, [variant]: response.data }));
     } catch (err) {
-      setBenchError(err instanceof Error ? err.message : 'Benchmark failed.');
+      if (isCurrent()) setBenchError(err instanceof Error ? err.message : 'Benchmark failed.');
     } finally {
-      setBenchBusy(false);
+      if (isCurrent()) setBenchBusy(false);
     }
   }
 
@@ -111,7 +134,8 @@ export default function App() {
       <h1>Detect documentation drift.<br/><em>Before it becomes an incident.</em></h1>
       <p>Compare a declared Jira API change with Confluence runbooks and review the underlying evidence.</p>
     </section>
-    <InvestigationPanel issueKey={issueKey} />
+    <InvestigationPanel key={securityEpoch} issueKey={issueKey}
+      onAccessUnverified={() => invalidateAllEvidence(securityEpoch)} />
     <section className="scanCard">
       <div className="label">JIRA CHANGE</div>
       <div className="scanRow">
