@@ -1,11 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { invoke, router } from '@forge/bridge';
+import PrivateReviewControls from './PrivateReviewControls.jsx';
 
 /**
  * MVP 1: read-only investigation; does not save decisions, classify drift,
  * or change Confluence. All returned documents were fetched as the user.
  */
-export default function InvestigationPanel({ issueKey }) {
+export default function InvestigationPanel({ issueKey, onAccessUnverified }) {
   const [report, setReport] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -31,7 +32,7 @@ export default function InvestigationPanel({ issueKey }) {
       const response = await invoke('startInvestigation', { issueKey });
       if (currentRequest !== requestVersion.current) return;
       if (!response?.ok) throw new Error(response?.message || 'Investigation failed.');
-      setReport(response.data);
+      setReport({ ...response.data, clientRunId: currentRequest });
     } catch (reason) {
       if (currentRequest === requestVersion.current) {
         setError(reason instanceof Error ? reason.message : 'Investigation failed.');
@@ -39,6 +40,21 @@ export default function InvestigationPanel({ issueKey }) {
     } finally {
       if (currentRequest === requestVersion.current) setBusy(false);
     }
+  }
+
+  // Any failed fresh source verification invalidates the entire rendered
+  // investigation, including the parent Confluence quote and document title.
+  // A user must run a new asUser investigation before further decisions.
+  function invalidateSourceEvidence(forRunId) {
+    // A late failure from an older private review must not invalidate a newer
+    // investigation. A current failure clears every document-bearing panel.
+    if (forRunId !== requestVersion.current) return;
+    requestVersion.current += 1;
+    setBusy(false);
+    setReport(null);
+    setFocusedPage(null);
+    setError('Source access or version could not be verified. Run investigation again.');
+    onAccessUnverified?.();
   }
 
   return <section className="sourceCard investigation">
@@ -102,6 +118,11 @@ export default function InvestigationPanel({ issueKey }) {
                 ? <blockquote className="investigationQuote">{doc.contentEvidence.quote}</blockquote>
                 : <p className="note">No readable source excerpt available. Open the page to verify its instructions.</p>}
               <p className="note">An endpoint mention may be historical, conditional, rollback-only or active. Human interpretation is required.</p>
+              <PrivateReviewControls key={issueKey + ':' + doc.pageId + ':' + report.clientRunId}
+                issueKey={report.issueKey} pageId={doc.pageId}
+                jiraUpdated={report.jiraUpdated}
+                pageVersion={doc.contentEvidence?.pageVersion ?? null}
+                onAccessUnverified={() => invalidateSourceEvidence(report.clientRunId)} />
             </div>}
           </div>)}
       </div>
@@ -109,8 +130,8 @@ export default function InvestigationPanel({ issueKey }) {
         report.coverage?.readBudgetTruncated || report.coverage?.someReadsFailed) &&
         <p className="note">Coverage is partial or uncertain. Missing documents cannot be declared safe, irrelevant, or resolved.</p>}
       <div className="investigationBoundary">
-        <strong>3. Human review · not enabled yet</strong>
-        <p className="note">This milestone does not store review decisions or permit closure. Editing and verified recheck require versioned Jira/Confluence evidence and will be implemented separately.</p>
+        <strong>3. Human review · private decisions only</strong>
+        <p className="note">Your private human judgments may be saved through Forge storage. No automatic drift verdict, Confluence edit, source recheck or verified closure is enabled.</p>
       </div>
       <p className="note">{report.note}</p>
     </>}
