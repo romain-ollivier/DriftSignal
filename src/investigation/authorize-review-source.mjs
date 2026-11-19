@@ -24,7 +24,7 @@ export async function authorizeReviewSource({
       !Number.isSafeInteger(page?.version?.number) || page.version.number <= 0 ||
       typeof page?.body?.storage?.value !== 'string' ||
       !page.body.storage.value.trim() ||
-      (page.status && page.status !== 'current')) {
+      page.status !== 'current') {
     throw new Error('Current readable Confluence page/version is required.');
   }
 
@@ -45,7 +45,8 @@ export async function authorizeReviewSource({
       throw new Error('Complete authenticated Confluence ancestry is required.');
     }
     if (!ancestry.results.some(parent =>
-      String(parent?.id) === LIVE_BENCHMARK.corpusAncestorId)) {
+      String(parent?.id) === LIVE_BENCHMARK.corpusAncestorId &&
+      parent?.type === 'page')) {
       throw new Error('Document is outside the controlled benchmark corpus.');
     }
   }
