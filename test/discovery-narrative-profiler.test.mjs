@@ -83,7 +83,7 @@ test('Do not treat a quoted runbook passage as a Jira change assertion', () => {
 });
 
 test('Ignore generic, malformed, overly long and potentially unsafe paths', () => {
-  for (const candidate of ['/health', '/status', '/ready', '/v1', '/api/v1', '/bad//segment', '/foo?v=secret', '/foo#fragment', '/abcdefgh'.repeat(20)]) {
+  for (const candidate of ['/health', '/status', '/ready', '/v1', '/api/v1', '/bad//segment', '/foo?v=secret', '/foo#fragment', '/ledger/v1/export?token=abc', '/ledger/v1/export#anchor', '/abcdefgh'.repeat(20)]) {
     const p = profileJiraChangeNarrative(issue('The old route ' + candidate + ' was on ledger-old.internal.'));
     assert.equal(p.signals.some(s => s.extraction === 'narrative_pattern'), false, candidate);
   }
