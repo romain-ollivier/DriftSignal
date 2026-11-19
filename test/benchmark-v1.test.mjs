@@ -66,11 +66,38 @@ test('Rollback-only document is relevant but has NO incompatible instruction', (
 });
 
 test('BMK-102 does not infer endpoint retirement from traffic migration wording', () => {
-  assert.equal(corpus.corpusRevision, '1.1');
+  assert.equal(corpus.corpusRevision, '1.2');
   const gold = scenario('BMK-102').annotations.find((annotation) => annotation.pageId === '10006');
   assert.equal(gold.relevance, 'relevant');
   assert.equal(gold.role, 'procedure_to_review');
   assert.equal(gold.incompatibleInstruction, 'unknown');
+});
+
+test('A deployed V2 does not by itself prove that V1 is retired or incompatible', () => {
+  const expected = [
+    ['BMK-101', '10001'],
+    ['BMK-106', '10006'],
+    ['BMK-106', '10014'],
+  ];
+  for (const [scenarioId, pageId] of expected) {
+    const gold = scenario(scenarioId).annotations.find((entry) => entry.pageId === pageId);
+    assert.equal(gold.relevance, 'relevant', scenarioId + ':' + pageId);
+    assert.equal(gold.role, 'procedure_to_review', scenarioId + ':' + pageId);
+    assert.equal(gold.incompatibleInstruction, 'unknown', scenarioId + ':' + pageId);
+  }
+});
+
+test('Gold revision 1.2 changes incompatibility labels only and records an audit trail', () => {
+  const changes = corpus.annotationChangeLog.filter((change) => change.revision === '1.2');
+  assert.equal(changes.length, 3);
+  for (const change of changes) {
+    assert.equal(change.field, 'incompatibleInstruction');
+    assert.equal(change.from, 'yes');
+    assert.equal(change.to, 'unknown');
+    assert.ok(change.reason.includes('v1') || change.reason.includes('V1'));
+    const matching = scenario(change.scenario).annotations.find((entry) => entry.pageId === change.pageId);
+    assert.equal(matching.incompatibleInstruction, 'unknown');
+  }
 });
 
 test('A relevance rejection is distinguished from an instruction incompatibility', () => {
