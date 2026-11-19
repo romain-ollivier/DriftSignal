@@ -33,11 +33,11 @@
 ## Candidate improvements (do NOT change frozen baseline yet)
 
 1. **Natural-language signal extraction:** benchmark a bounded deterministic regex expansion against an optional structured LLM extractor; compare provenance, unsupported guesses, latency, and improvement on BMK-102. The paths are literally present in Jira; there is no reason to infer missing endpoints.
-2. **One-hop documentary navigation:** the context page BMK-103 mentions the runbook, but the search cannot reach it. Measure a single authorized follow-on lookup separately from lexical query expansion.
+2. **Indirect documentary reference:** the context page BMK-103 names the runbook in plain text, but has **no actual Confluence hyperlink**. Test a bounded follow-on title lookup separately from true hyperlink traversal. Do not claim that this frozen case validates link graph navigation; a future versioned case would need an explicit link.
 3. **Real tenant validation:** measure CQL punctuation/tokenization, actual executed requests, first-page pagination/stop reasons, same-corpus access rights, and repeated run times. Record both successful and failed searches and reads. Do not publish real tenant page IDs or private gold labels.
 
 ## Suggested next decision gate
 
-Before tuning either improvement, reproduce the first two miss families on the **real demonstration tenant** with pre-annotated gold, and compare B0 and B1 at the same persona, same 10-read budget, and recorded actual API costs. If an extractor gap survives, prototype extraction. If the page is reachable only through another page, prototype a one-hop traversal.
+Before tuning either improvement, reproduce the first two miss families on the **real demonstration tenant** with pre-annotated gold, and compare B0 and B1 at the same persona, same 10-read budget, and recorded actual API costs. If an extractor gap survives, prototype extraction. If the runbook is identifiable only via the service catalog, distinguish a title-based follow-on search from a real link traversal before choosing the next experiment.
 
 **Boundaries:** This report records a single synthetic run, not an independent holdout. All synthetic labels are public and may be inspected by contributors. Do not interpret these results as a validated Codegeist performance claim.
