@@ -16,3 +16,16 @@
 .investigationDetail{border-top:1px solid #304052;margin-top:12px;padding-top:7px}
 .investigationBoundary{border:1px dashed #526b78;border-radius:9px;padding:14px;margin:22px 0 10px}
 .investigationBoundary strong{font-size:13px}
+
+/* Private human decisions: never implies compatibility verification or closure. */
+.privateReview{margin-top:18px;border-top:1px solid #3a5364;padding-top:14px;display:flex;flex-direction:column;gap:10px}
+.privateReview .sourceHead{align-items:center}
+.privateReview .note{margin:0}
+.privateReview select,.privateReview textarea{width:100%;border:1px solid #43606f;border-radius:8px;background:#0d1929;color:#e2edf4;padding:10px 12px;font:inherit;font-size:12px}
+.privateReview textarea{resize:vertical;min-height:76px}
+.reviewLabel{display:block;font-size:11px;color:#b5cbda;font-weight:700}
+.privateReview button{align-self:flex-start}
+.reviewHistory{border:1px solid #35485c;border-radius:8px;padding:10px}
+.reviewHistory summary{cursor:pointer;font-size:12px;color:#cde9e5}
+.reviewHistory li{margin:10px 0;color:#e2ebf3;font-size:12px}
+.reviewHistory li p{margin:4px 0}
