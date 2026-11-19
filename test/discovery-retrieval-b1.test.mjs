@@ -186,7 +186,12 @@ test('B1 verified direct link is considered before CQL results, subject to as-us
   const r = await runB1Retrieval(plan([query('q1', 'text')], [{ id: 'l1', url: link, origins: [] }]),
     g, { readBudget: 1 });
   assert.deepEqual(g.calls.read.map(([id]) => id), ['900']);
-  assert.equal(r.candidates[0].paths[0].kind, 'direct_link');
+  // CQL establishes the tenant before links are resolved, so candidate
+  // insertion order no longer reflects selection priority.
+  const firstSelected = r.candidates.find((candidate) => candidate.selectionRank === 1);
+  assert.equal(firstSelected.pageId, '900');
+  assert.equal(firstSelected.paths[0].kind, 'direct_link');
+  assert.equal(r.candidates.find((candidate) => candidate.pageId === '901').selectionRank, null);
 });
 
 test('B1 does not classify a page as irrelevant when access is revoked during fetch', async () => {
