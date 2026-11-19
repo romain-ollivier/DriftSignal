@@ -216,7 +216,8 @@ export async function runB1Retrieval(plan, gateway, options = {}) {
         report.coverage.directLinksNotResolved++;
         continue;
       }
-      add(resolved.siteId, resolved.pageId, null, link.url, {
+      const canonicalUrl = resolved.siteId + '/wiki/pages/viewpage.action?pageId=' + encodeURIComponent(resolved.pageId);
+      add(resolved.siteId, resolved.pageId, null, canonicalUrl, {
         kind: 'direct_link',
         operationId: link.id,
         origins: link.origins,
