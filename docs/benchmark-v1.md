@@ -16,6 +16,21 @@ Observed, **not equal-budget**, CLSD-6 runs:
 
 These two observations are diagnostic only. They cannot establish recall, precision, or reliable latency savings.
 
+## First live paired results on the scoped corpus (Forge Development v2.9.0)
+
+**As reported on 2026-11-19:** four of the six Jira scenarios have a single observed B0/B1 comparison. All runs used the fixed `DSBMK` descendant corpus and at most ten attempted body reads per variant, but **not** an equal total API request budget. Counts below refer to **authorized, readable documents shown** and the frozen case-specific relevance gold, **not** a drift classifier.
+
+| Scenario | B0 CQL / read / gold relevant | B1 CQL / read / gold relevant | Main observation |
+| --- | --- | --- | --- |
+| [DSBENCH-1](benchmark-v1-live-dsbench-1.md) — structured | 1 / 4 / 3 of 3 | 3 / 4 / 3 of 3 | Same set, no observed recall gain; B1 costlier in CQL calls |
+| [DSBENCH-2](benchmark-v1-live-dsbench-2.md) — prose | 0 / 0 / 0 of 2 | 0 / 0 / 0 of 2 | Jira signal extraction failed before any search; B1.1 experimentation is isolated in a draft PR |
+| [DSBENCH-4](benchmark-v1-live-dsbench-4.md) — vague | 0 / 0 / no gold-positive docs | 0 / 0 / no gold-positive docs | Correct abstention; no fabricated technical anchor |
+| [DSBENCH-5](benchmark-v1-live-dsbench-5.md) — generic `/health` | 1 / 4 / 2 of 2 | 1 / 3 / 2 of 2 | Same relevant context found; B1 read one fewer irrelevant page with same CQL count |
+
+Caution: all results are first observations from Jira panels supplied by the project owner; exact run timestamps and source-version stamps were not automatically captured. No general latency inference is possible. For DSBENCH-5 the two gold-relevant pages are **context** (rollback/architecture), **not active procedures confirmed incompatible**. A `Planned` `/health` update does not constitute proven drift.
+
+**Remaining scenarios:** DSBENCH-3 and DSBENCH-6 need native Jira components (`Voyager Scheduler`, `Settlement Core`) before the full-fidelity comparison; the second real Atlassian persona has not been validated. This scope-limited experiment cannot support a zero-configuration claim without the separately planned unscoped trial.
+
 ## Dataset V1
 
 `fixtures/benchmark-v1/corpus.synthetic.json` is **entirely synthetic** and public (corpus annotation revision **1.1**; schema version remains 1.0). The baseline synthetic retrieval outputs were captured before the annotation-only correction; 1.1 changes BMK-102 page `10006` incompatibility from `yes` to `unknown`, without changing any source ticket, page, relevance label, or discovery behavior:
