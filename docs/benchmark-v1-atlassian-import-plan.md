@@ -50,6 +50,22 @@
 - Six ticket summaries and essential technical description signals were independently read and verified. Jira descriptions were formatted as separate Markdown paragraphs to retain source line boundaries. **Incomplete fields must be fixed before benchmark:** create Jira components `Voyager Scheduler` and `Settlement Core` through Jira project settings, then attach to DSBENCH-3 and DSBENCH-6 respectively and re-read both issues. Do not add components as text to the Jira description.
 - Before the first live comparative trial, implement identical CQL scope for both B0 and B1 and a 10-read limit for both in a **benchmark-only execution path**. The current Forge v2.8.0 B0 production diagnostic still has a different read budget and unscoped searches.
 
+## Scoped Forge benchmark implementation — prepared, NOT deployed
+
+A new, separate Forge benchmark path has been committed on `main`, **not yet validated by local npm tests, Forge lint, or deployment**:
+
+- `src/benchmark/live-scope.mjs` fixes corpus boundaries to `space = "DSBMK" AND ancestor = 5177345`, allows DSBENCH-1 through DSBENCH-6 only, and specifies 10 page-read attempts per variant.
+- `src/index.js` exposes **separate** resolvers `scanBenchmarkB0` and `scanBenchmarkB1`. They apply scope in the server-side CQL **before** the search returns hits. Standard `scanB0`, `scanB1`, and M1 `scan` remain unscoped.
+- B1 disables direct-link candidates **only in the scoped benchmark** to prevent links escaping the corpus; the source cases currently contain no direct Confluence links. A future trial with direct links needs verified ancestry rather than an unscoped body read.
+- `src/benchmark/public-live-report.mjs` exposes only authorized, fetched, usable pages and request-level query counts/timings. It does **not** disclose unfetched hits, failed page IDs, private gold annotations, or hidden read candidate counts.
+- The Jira Custom UI renders two explicit scoped buttons only on DSBENCH-1 through DSBENCH-6 and retains both results for comparison.
+- The elapsed duration is measured from before Jira fetch to report construction for both variants. Do not infer API-cost equality: B0 executes at most one CQL, B1 up to four. The common limit is **10 attempted body reads**, not 10 successful pages.
+- **Data loss tracing is still incomplete:** the user-facing projection is not a private full gold-matching benchmark report. The private evaluator exists for synthetic runs, but a secure live trace collection process has not been deployed. Do not announce live recall gains from only UI document counts.
+
+**Required deployment gate:** local `npm.cmd test`, `npm.cmd run build`, and `forge.cmd lint`; then `forge.cmd deploy -e development` by the user. Record the actual Forge version after deployment. Existing v2.8.0 deployment does **not** contain scoped benchmark buttons.
+
+**Remaining corpus prerequisite:** DSBENCH-3 requires native Jira component `Voyager Scheduler` and DSBENCH-6 requires `Settlement Core`. The connected Jira tool lists **zero** components in DSBENCH as of the latest check. Create the components in Jira project settings and attach them to the correct issues before claiming full-fidelity coverage.
+
 ## Scenario-to-ticket mapping
 
 | Synthetic key | Split | Ticket type |
