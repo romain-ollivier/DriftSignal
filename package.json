@@ -13,7 +13,8 @@
   },
   "dependencies": {
     "@forge/api": "^5.1.1",
-    "@forge/resolver": "^1.6.0"
+    "@forge/resolver": "^1.6.0",
+    "@forge/kvs": "2.1.0"
   },
   "engines": {
     "node": ">=22"
