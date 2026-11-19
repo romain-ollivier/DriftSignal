@@ -15,6 +15,7 @@ import { LIVE_BENCHMARK, isBenchmarkIssueKey, scopedBenchmarkCql } from './bench
 import { toPublicLiveBenchmark } from './benchmark/public-live-report.mjs';
 import { evidenceFromReadablePage, toPublicInvestigation } from './investigation/public-investigation.mjs';
 import { investigationScope } from './investigation/scope.mjs';
+import { authorizeInvestigationPage } from './investigation/authorize-investigation-page.mjs';
 
 const Resolver = ResolverModule.default ?? ResolverModule;
 const resolver = new Resolver();
@@ -157,8 +158,23 @@ resolver.define('startInvestigation', async ({ payload }) => {
       async readPage(pageId, siteId) {
         // Explicitly asUser and same verified site as the unchanged B1 gateway.
         const page = await readGateway.readPage(pageId, siteId);
+        const verified = await authorizeInvestigationPage({
+          page, pageId, siteId, scoped,
+          readAncestors: async id => {
+            const response = await api.asUser().requestConfluence(
+              route`/wiki/api/v2/pages/${id}/ancestors?limit=100`,
+              { headers: { Accept: 'application/json' } },
+            );
+            const data = await requireOk(response, 'Confluence ancestors');
+            return { results: data.results, next: data?._links?.next || data?.next || null };
+          },
+        });
         const excerpt = evidenceFromReadablePage(page, profile);
-        if (excerpt) authorizedPageEvidence.set(String(pageId), excerpt);
+        authorizedPageEvidence.set(String(pageId), {
+          ...(excerpt ?? {}),
+          pageTitle: verified.pageTitle,
+          siteOrigin: verified.siteOrigin,
+        });
         return page;
       },
     }, {
@@ -169,7 +185,7 @@ resolver.define('startInvestigation', async ({ payload }) => {
     return {
       ok: true,
       data: toPublicInvestigation({
-        profile, plan, retrieval, authorizedPageEvidence, scoped,
+        profile, issue, plan, retrieval, authorizedPageEvidence, scoped,
       }),
     };
   } catch {
