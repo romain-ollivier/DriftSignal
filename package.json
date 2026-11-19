@@ -8,7 +8,8 @@
     "build": "npm --prefix static/app run build",
     "test": "node --test test/*.test.mjs",
     "check": "npm test && npm run build",
-    "demo": "node scripts/demo.mjs"
+    "demo": "node scripts/demo.mjs",
+    "benchmark:synthetic": "node scripts/benchmark-v1.mjs"
   },
   "dependencies": {
     "@forge/api": "^5.1.1",
