@@ -1,6 +1,6 @@
 # Investigation MVP II — Human review state contract (no storage or resolver yet)
 
-**Status:** isolated pure-function implementation on a **stacked draft PR** based on Investigation MVP I, PR #4. **Not merged, not deployed, not yet wired to Forge storage or UI actions.**
+**Status:** isolated pure-function implementation on stacked draft PR #5. After consultant review the scope is **human decisions only**: no recheck or closure transitions exist in this module. Not merged or deployed.
 
 ## Why this stage
 
@@ -14,13 +14,7 @@ The initial investigation UI retrieves and displays readable Confluence sources,
 - `DISMISSED_BY_REVIEWER`: reviewer dismisses that **specific candidate**, not the whole Jira ticket.
 - `CONFIRMED_BY_REVIEWER`: reviewer records a decision with a substantive explanation, explicitly attributed to the human. **Not a machine verified conflict.**
 
-From `CONFIRMED_BY_REVIEWER`, an **authorized server-side** recheck yields:
-
-- `RECHECK_FAILED` after loss of Confluence access, API/body-read failure, or changed Jira version.
-- `RECHECK_REQUIRED` if the old operational instruction remains or the evidence is insufficient.
-- `READY_FOR_RESOLUTION_REVIEW` only if a new readable Confluence page version exists, the Jira source version is unchanged, and a **trusted server-side evaluation** reports `CANDIDATE_FIXED`.
-
-`RESOLVED_VERIFIED` can only follow an additional human acknowledgement of `READY_FOR_RESOLUTION_REVIEW`. Merely changing the page title, deleting the paragraph, seeing HTTP 403, or losing access is never a reason to auto-close.
+**Deferred by technical review:** All `recordRecheck`, `acknowledgeVerifiedResolution`, `READY_FOR_RESOLUTION_REVIEW` and `RESOLVED_VERIFIED` transitions have been removed from PR #5. They must be designed later around an explicitly fresh, authenticated server re-read at final acknowledgement. No resolver in PR #6 offers closure.
 
 ## Immutable review record
 
