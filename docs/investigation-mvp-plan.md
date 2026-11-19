@@ -1,6 +1,6 @@
 # DriftSignal — Investigation MVP contract (Codegeist 2026)
 
-**Status:** design proposal only, **not implemented**. Drafted after strategic and technical reviews on 2026-11-19.  
+**Status:** Milestone I read-only evidence panel implemented in a **draft branch**, pending CI, technical review and isolated Forge deployment. Milestones II/III remain design proposals. Drafted after strategic and technical reviews on 2026-11-19.  
 **Stable backend reference:** Forge Development v2.9.0, B1 scoped retrieval (benchmark corpus 1.1).  
 **New gold labels:** annotation revision 1.2 was merged independently; this does not modify the historical Forge v2.9.0 runs.
 
@@ -12,6 +12,24 @@ A single Jira issue panel should let a production engineer follow the end-to-end
 
 The user interface must not mistake **document retrieval**, **contextual relevance**, and **instruction incompatibility** for the same decision.
 
+## Milestone I implementation (review branch only)
+
+- New Forge resolver startInvestigation reuses the existing B1 Change Profiler, Query Planner and B1 retrieval engine, with read budget 10 and CQL cap 4.
+- Frozen DSBENCH issues remain DSBMK descendant-scoped at search time, with no direct links. Other Jira issues use normal asUser B1 discovery. The existing B0/B1 benchmark resolvers remain unchanged.
+- Every Confluence evidence excerpt is taken during an already-authorized page-body read. No additional body reads are performed for the preview. Up to 260 characters of literal text and page version (when provided) are available only for usable bodies.
+- A Jira quote omitting its extracted value is not presented as evidence. The Jira source field/path and modified timestamp are shown.
+- A dedicated Jira UI panel lets the user inspect authorized source excerpts and open Confluence links, with no saved review state.
+- Retrieved pages are NOT_ASSESSED; no automatic relevance, incompatible-instruction, V1 retirement, correction or closure verdict is produced.
+- The historical M1 scan may still display legacy SOURCE_CONFLICT outputs. This new panel is distinct and must not be confused with that scan.
+
+### Smoke tests after technical review and isolated Forge deploy
+
+1. DSBENCH-4: no technical signals and no search; no false success claim.
+2. DSBENCH-5: generic /health and Planned status do not imply operational drift; all candidate documents remain NOT_ASSESSED.
+3. DSBENCH-3: catalog discovered, indirect recovery guide still missing; limitation visible.
+4. DSBENCH-6 authorized user: check page versions and excerpts, without inferring V1 retirement.
+5. DSBENCH-6 genuinely limited user: restricted document must be absent by ID/title/URL/quote.
+6. Confirm previous scoped B0/B1 results unchanged and no source page is edited.
 ## Proposed investigation states
 
 | State | Trigger / meaning | Closure allowed? |
