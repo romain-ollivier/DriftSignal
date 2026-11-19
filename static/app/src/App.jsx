@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { invoke, view, router } from '@forge/bridge';
+import InvestigationPanel from './InvestigationPanel.jsx';
 
 const MESSAGES = {
   SOURCE_CONFLICT: ['Documentation discrepancy', 'At least one runbook conflicts with the change declared in Jira.', 'danger'],
@@ -110,6 +111,7 @@ export default function App() {
       <h1>Detect documentation drift.<br/><em>Before it becomes an incident.</em></h1>
       <p>Compare a declared Jira API change with Confluence runbooks and review the underlying evidence.</p>
     </section>
+    <InvestigationPanel issueKey={issueKey} />
     <section className="scanCard">
       <div className="label">JIRA CHANGE</div>
       <div className="scanRow">
