@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { invoke, router } from '@forge/bridge';
 
 /**
@@ -10,8 +10,11 @@ export default function InvestigationPanel({ issueKey }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [focusedPage, setFocusedPage] = useState(null);
+  const requestVersion = useRef(0);
 
   useEffect(() => {
+    requestVersion.current += 1;
+    setBusy(false);
     setReport(null);
     setFocusedPage(null);
     setError('');
@@ -19,18 +22,22 @@ export default function InvestigationPanel({ issueKey }) {
 
   async function investigate() {
     if (!issueKey || busy) return;
+    const currentRequest = ++requestVersion.current;
     setBusy(true);
     setReport(null);
     setFocusedPage(null);
     setError('');
     try {
       const response = await invoke('startInvestigation', { issueKey });
+      if (currentRequest !== requestVersion.current) return;
       if (!response?.ok) throw new Error(response?.message || 'Investigation failed.');
       setReport(response.data);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Investigation failed.');
+      if (currentRequest === requestVersion.current) {
+        setError(reason instanceof Error ? reason.message : 'Investigation failed.');
+      }
     } finally {
-      setBusy(false);
+      if (currentRequest === requestVersion.current) setBusy(false);
     }
   }
 
