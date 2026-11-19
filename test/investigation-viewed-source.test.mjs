@@ -11,7 +11,7 @@ const allowed={
   readIssue:async key=>({key,fields:{updated:viewed.jiraUpdated}}),
   readPage:async id=>({id,spaceId:'5013508',status:'current',
     version:{number:2},body:{storage:{value:'<p>Instruction updated</p>'}}}),
-  readAncestors:async()=>({results:[{id:'5177345'}],next:null}),
+  readAncestors:async()=>({results:[{id:'5177345',type:'page'}],next:null}),
 };
 
 test('Displayed source preconditions must include canonical Jira key and both versions',()=>{
