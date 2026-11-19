@@ -1,11 +1,11 @@
 # Benchmark V1 — Atlassian seeding plan (NOT EXECUTED)
 
-**Status:** prepared, no remote Jira/Confluence mutations performed.  
+**Status (2026-11-19):** Confluence **15/15 pages created** under a dedicated synthetic corpus parent in DSBMK; one private page has independently verified `VIEW_RESTRICTED` state and creator-only update grant. **Jira project creation remains blocked by connector capabilities; 0/6 test tickets created.**  
 **Tenant provided by project owner:** `https://one-atlas-mezt.atlassian.net`  
 **Target Confluence space key:** `DSBMK`  
 **Space overview supplied:** `https://one-atlas-mezt.atlassian.net/wiki/spaces/DSBMK/overview?homepageId=5013747`  
-**Space homepage ID from provided URL:** `5013747` (**not independently verified**).  
-**Baseline corpus:** `fixtures/benchmark-v1/corpus.synthetic.json` (six scenarios, fifteen pages, 90 annotations).  
+**Space homepage ID:** `5013747` (verified by authenticated Confluence read; space id `5013508`).  
+**Baseline corpus:** `fixtures/benchmark-v1/corpus.synthetic.json` (six scenarios, fifteen pages, 90 annotations, corpus annotation revision 1.1).  
 **Frozen engine:** `090e74f` and v2.8.0 Forge development.
 
 ## Principle: seed source materials, never seed answers into the app
@@ -30,6 +30,24 @@
 8. **Run baseline B0/B1 paired**, under the same persona and 10-read cap, collecting actual search calls, Jira/body reads, failures, stop reasons, and repeated timings. The fixed total-API-call comparison must wait until the request accounting and enforcement are implemented.
 
 **Do not create pages or tickets until connected-write access and project selection are confirmed.** Avoid creating duplicate objects on retries. If an attempt partially fails, retain created IDs and retry only missing items.
+
+## Actual progress and indexability checks
+
+- Created 15 distinct synthetic pages in Confluence space DSBMK under the synthetic corpus parent; 15/15 were visible in a controlled CQL space listing to the creator, in addition to the homepage, parent and automatically generated template pages. Their **actual IDs belong to a private evaluation mapping**, not this public document.
+- Created private `Settlement Emergency Failover Procedure` with the `private` create option. Verified `VIEW_RESTRICTED` by reading Confluence restriction state; explicit grant was creator `update`. **The limited persona has not yet been tested in a separate Atlassian session.**
+- Confirmed at least one uploaded document's HTML headings/text survive a full Confluence read.
+- CQL probes with `space = "DSBMK"` (initial results, same authorized principal):
+  - `title ~ "Orchid"` → 1 expected runbook
+  - `title ~ "Queue Worker Recovery Guide"` → 1 expected runbook
+  - `text ~ "payment-gateway"` → 3 pages
+  - `text ~ "/settlement/v1/route"` → 2 pages
+  - `text ~ "legacy-settle.example.internal"` → **0 pages**, even though the string appears in the synthetic text
+  - `text ~ "legacy-settle"` → **0 pages**
+  - `text ~ "Voyager Scheduler"` → 1 service catalog page
+- Interpret CQL results cautiously: Confluence tokenization and asynchronous indexing are genuine confounders. A literal hostname miss does not mean the page is unreadable or impossible to find through the old endpoint.
+- Jira project `CLSD` belongs to a legal service desk, and is deliberately not repurposed. **Do not use the connector's `createProject` tool to create Jira project**: it creates an Atlassian Projects (Atlas) entity, not a Jira software project. The available Atlassian plugin does not expose Jira project creation. Manual Jira UI setup is required before connector-based ticket import.
+- Reverify six Jira source field values, especially component **Voyager Scheduler** for BMK-103 and **Settlement Core** for BMK-106. Jira components require actual component records; do not silently omit them or substitute text labels.
+- Before the first live comparative trial, implement identical CQL scope for both B0 and B1 and a 10-read limit for both in a **benchmark-only execution path**. The current Forge v2.8.0 B0 production diagnostic still has a different read budget and unscoped searches.
 
 ## Scenario-to-ticket mapping
 
