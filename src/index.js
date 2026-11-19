@@ -16,6 +16,10 @@ import { toPublicLiveBenchmark } from './benchmark/public-live-report.mjs';
 import { evidenceFromReadablePage, toPublicInvestigation } from './investigation/public-investigation.mjs';
 import { investigationScope } from './investigation/scope.mjs';
 import { authorizeInvestigationPage } from './investigation/authorize-investigation-page.mjs';
+import { authorizeReviewSource } from './investigation/authorize-review-source.mjs';
+import { createPrivateReviewJournal } from './investigation/review-journal.mjs';
+import { privateReviewStorage } from './investigation/forge-kvs-storage.mjs';
+import { assertViewedSource } from './investigation/viewed-source.mjs';
 
 const Resolver = ResolverModule.default ?? ResolverModule;
 const resolver = new Resolver();
@@ -191,6 +195,70 @@ resolver.define('startInvestigation', async ({ payload }) => {
   } catch {
     // Never reveal unread or unauthorized page identities through errors.
     return { ok: false, message: 'Read-only investigation could not be completed.' };
+  }
+});
+
+// Private, append-only human review. Actor is trusted resolver accountId.
+// Source versions are freshly read asUser; the browser cannot attest them.
+const reviewJournal = createPrivateReviewJournal(privateReviewStorage);
+
+async function currentAuthorizedReviewSource(issueKey, pageId) {
+  return authorizeReviewSource({
+    issueKey, pageId,
+    readIssue: key => gateway.readIssue(key),
+    readPage: id => gateway.readPage(id),
+    async readAncestors(id) {
+      const response = await api.asUser().requestConfluence(
+        route`/wiki/api/v2/pages/${id}/ancestors?limit=100`,
+        { headers: { Accept: 'application/json' } },
+      );
+      const data = await requireOk(response, 'Confluence ancestors');
+      return { results: data.results, next: data?._links?.next || data?.next || null };
+    },
+  });
+}
+function authenticatedReviewActor(context) {
+  if (typeof context?.accountId !== 'string' || !context.accountId.trim() ||
+      context.accountType === 'anonymous') {
+    throw new Error('An authenticated Atlassian user is required.');
+  }
+  return context.accountId;
+}
+resolver.define('getPrivateReview', async ({ payload, context }) => {
+  try {
+    const actorId = authenticatedReviewActor(context);
+    const source = await currentAuthorizedReviewSource(payload?.issueKey, payload?.pageId);
+    const review = await reviewJournal.read({ actorId, source });
+    return { ok: true, data: review };
+  } catch {
+    return { ok: false, message: 'Private review unavailable. Check current Jira/Confluence access.' };
+  }
+});
+resolver.define('beginPrivateReview', async ({ payload, context }) => {
+  try {
+    const actorId = authenticatedReviewActor(context);
+    const source = await currentAuthorizedReviewSource(payload?.issueKey, payload?.pageId);
+    // Browser's displayed version is a precondition, not trusted authority.
+    assertViewedSource(source, payload?.viewed);
+    const review = await reviewJournal.begin({ actorId, source, now: new Date().toISOString() });
+    return { ok: true, data: review };
+  } catch {
+    return { ok: false, message: 'Could not start private review. Check access or existing review.' };
+  }
+});
+resolver.define('decidePrivateReview', async ({ payload, context }) => {
+  try {
+    const actorId = authenticatedReviewActor(context);
+    const source = await currentAuthorizedReviewSource(payload?.issueKey, payload?.pageId);
+    assertViewedSource(source, payload?.viewed);
+    const review = await reviewJournal.decide({
+      actorId, source, now: new Date().toISOString(),
+      expectedRevision: payload?.expectedRevision,
+      decision: payload?.decision, reason: payload?.reason,
+    });
+    return { ok: true, data: review };
+  } catch {
+    return { ok: false, message: 'Review not saved. Source may have changed, or another decision won. Reload.' };
   }
 });
 
