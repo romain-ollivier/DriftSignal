@@ -119,3 +119,25 @@ test('Literal Confluence excerpt does not parse HTML tags or scripts as evidence
   assert.equal(excerpt.quote, 'Old endpoint: /settlement/v1/route');
   assert.equal(excerpt.quote.includes('hidden-secret'), false);
 });
+
+
+test('Read-only investigation shows the literal Not deployed statement, not the legacy mistaken deployed value', () => {
+  const negated = profileJiraChange({
+    key: 'CASE-1',
+    fields: {
+      summary: 'Future migration',
+      description: 'Service: freight-core\nDeployment status: Not deployed',
+    },
+  });
+  // Base B1 may still normalize this incorrectly until isolated PR #3.
+  assert.equal(negated.context.deploymentState, 'deployed');
+  const view = toPublicInvestigation({
+    profile: negated,
+    plan: { status: 'READY' },
+    retrieval: { ...retrieval([]), issueKey: 'CASE-1' },
+    authorizedPageEvidence: new Map(), scoped: false,
+  });
+  const deployment = view.jiraEvidence.find(s => s.family === 'deployment_state');
+  assert.equal(deployment.value, 'Not deployed');
+  assert.equal(deployment.quote, 'Deployment status: Not deployed');
+});
