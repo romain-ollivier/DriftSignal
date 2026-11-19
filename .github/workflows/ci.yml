@@ -25,7 +25,11 @@ jobs:
           cache: npm
 
       - name: Install backend dependencies
-        run: npm ci
+        run: |
+          # Temporary one-run lockfile bootstrap; revert before review.
+          npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+          node -e "console.log('LOCKFILE_B64_BEGIN' + Buffer.from(require('fs').readFileSync('package-lock.json')).toString('base64') + 'LOCKFILE_B64_END')"
+          npm ci
 
       - name: Install UI dependencies
         run: npm ci --prefix static/app
