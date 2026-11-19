@@ -7,7 +7,7 @@ import { profileJiraChange } from './change-profiler.mjs';
  */
 const ANCHOR_RE = /\b(?:old|previous|legacy|former)\s+(?:api\s+)?(?:route|endpoint|path)\s+(\/[a-z0-9._~!$&'()*+,;=:@%/-]+)/gi;
 const GENERIC_PATHS = new Set(['/', '/health', '/healthz', '/status', '/ping', '/ready', '/readiness', '/metrics']);
-const EXCLUSION_RE = /\b(?:if|suppose|hypothetical|hypothetically|example|e\.g\.|for example|might|may|could|would|should|proposed|proposal|suggested|potential|possibly)\b/i;
+const EXCLUSION_RE = /\b(?:if|suppose|hypothetical|hypothetically|perhaps|example|e\.g\.|for example|might|may|could|would|should|proposed|proposal|suggested|potential|possibly)\b/i;
 const QUOTED_DOC_RE = /\b(?:runbook|documentation|docs?|wiki|sample|example|quote|quoted)\s+(?:says|said|states|stated|reads|mentions|mentioned|contains|lists|shows)\b/i;
 const MAX_RECORDS = 100;
 const MAX_RECORD_LENGTH = 2000;
@@ -99,7 +99,7 @@ export function profileJiraChangeNarrative(issue) {
     for (const match of text.matchAll(ANCHOR_RE)) {
       if (profile.signals.length >= MAX_SIGNALS) break;
       const context = sentenceContext(text, match.index);
-      if (EXCLUSION_RE.test(context.prefix) || QUOTED_DOC_RE.test(context.prefix)) continue;
+      if (EXCLUSION_RE.test(context.sentence) || QUOTED_DOC_RE.test(context.sentence)) continue;
       const endpoint = safePath(match[1]);
       if (!endpoint) continue;
       const quote = context.sentence.slice(0, 240);
