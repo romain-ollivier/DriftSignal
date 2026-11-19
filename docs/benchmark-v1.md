@@ -16,20 +16,31 @@ Observed, **not equal-budget**, CLSD-6 runs:
 
 These two observations are diagnostic only. They cannot establish recall, precision, or reliable latency savings.
 
-## First live paired results on the scoped corpus (Forge Development v2.9.0)
+## First complete live paired campaign on the scoped corpus (Forge Development v2.9.0)
 
-**As reported on 2026-11-19:** four of the six Jira scenarios have a single observed B0/B1 comparison. All runs used the fixed `DSBMK` descendant corpus and at most ten attempted body reads per variant, but **not** an equal total API request budget. Counts below refer to **authorized, readable documents shown** and the frozen case-specific relevance gold, **not** a drift classifier.
+**As reported on 2026-11-19:** **all six** synthetic Jira scenarios have one B0/B1 scoped comparison. All use the same 15-page DSBMK descendant corpus and at most **ten attempted body reads per engine**, but **not an equal total request budget**. Results are developer-side comparisons between browser-visible **authorized readable documents** and pre-existing synthetic gold annotations. They do **not** reflect an independent relevance assessor or live drift classifier.
 
-| Scenario | B0 CQL / read / gold relevant | B1 CQL / read / gold relevant | Main observation |
+| Scenario | B0: CQL / readable pages / relevant gold | B1: CQL / readable pages / relevant gold | Interpretation |
 | --- | --- | --- | --- |
-| [DSBENCH-1](benchmark-v1-live-dsbench-1.md) — structured | 1 / 4 / 3 of 3 | 3 / 4 / 3 of 3 | Same set, no observed recall gain; B1 costlier in CQL calls |
-| [DSBENCH-2](benchmark-v1-live-dsbench-2.md) — prose | 0 / 0 / 0 of 2 | 0 / 0 / 0 of 2 | Jira signal extraction failed before any search; B1.1 experimentation is isolated in a draft PR |
-| [DSBENCH-4](benchmark-v1-live-dsbench-4.md) — vague | 0 / 0 / no gold-positive docs | 0 / 0 / no gold-positive docs | Correct abstention; no fabricated technical anchor |
-| [DSBENCH-5](benchmark-v1-live-dsbench-5.md) — generic `/health` | 1 / 4 / 2 of 2 | 1 / 3 / 2 of 2 | Same relevant context found; B1 read one fewer irrelevant page with same CQL count |
+| [DSBENCH-1](benchmark-v1-live-dsbench-1.md) — structured | 1 / 4 / **3 of 3** | 3 / 4 / **3 of 3** | Identical retrieval set; no observed relevant-page gain |
+| [DSBENCH-2](benchmark-v1-live-dsbench-2.md) — narrative | 0 / 0 / **0 of 2** | 0 / 0 / **0 of 2** | Jira prose extraction failure before any CQL; B1.1 PR addresses this in isolation |
+| [DSBENCH-3](benchmark-v1-live-dsbench-3.md) — indirect | 0 / 0 / **0 of 2** | 1 / 1 / **1 of 2** | B1 discovers relevant **service catalog**, but **not** the expected recovery runbook |
+| [DSBENCH-4](benchmark-v1-live-dsbench-4.md) — vague | 0 / 0 / **N/A** | 0 / 0 / **N/A** | Correct abstention; no gold-relevant documents |
+| [DSBENCH-5](benchmark-v1-live-dsbench-5.md) — generic `/health` | 1 / 4 / **2 of 2** | 1 / 3 / **2 of 2** | Same relevant **context**; one unnecessary read avoided |
+| [DSBENCH-6](benchmark-v1-live-dsbench-6.md) — restricted case, authorized user | 1 / 5 / **4 of 4** | 4 / 4 / **4 of 4** | All relevant pages recovered, one irrelevant archive avoided with three extra CQL calls |
 
-Caution: all results are first observations from Jira panels supplied by the project owner; exact run timestamps and source-version stamps were not automatically captured. No general latency inference is possible. For DSBENCH-5 the two gold-relevant pages are **context** (rollback/architecture), **not active procedures confirmed incompatible**. A `Planned` `/health` update does not constitute proven drift.
+**Descriptive corpus aggregate**, one observed run of each case: B0 performed **3 CQL** requests and surfaced **13 usable pages** containing **9/13 gold-relevant case/page pairs**; B1 performed **9 CQL** requests and surfaced **12 usable pages** containing **10/13 gold-relevant case/page pairs**. The difference of one relevant pair is **the service catalog in DSBENCH-3**. Both found **4/6 expected relevant operational procedure pairs**; **no incremental operational runbook recall gain** has yet been observed. B1 read 2 non-relevant pages versus 4 for B0, at the price of more CQL requests. These are **small-corpus descriptive totals only**, not statistical or generalization results. Scenario 4 has no relevant page and correctly abstains.
 
-**Remaining scenarios:** DSBENCH-3 and DSBENCH-6 need native Jira components (`Voyager Scheduler`, `Settlement Core`) before the full-fidelity comparison; the second real Atlassian persona has not been validated. This scope-limited experiment cannot support a zero-configuration claim without the separately planned unscoped trial.
+**Evidence caveats:**
+- A completed `COMPLETE_WITHIN_BUDGET` run is not evidence of relevant coverage.
+- For DSBENCH-5 the two gold-relevant pages are **context**; a planned generic `/health` change is not demonstrated drift.
+- For DSBENCH-6 the authorized principal saw a restricted procedure, legitimately; **permission isolation against a separate limited user remains untested**. Accessible gold denominators must be persona-specific.
+- B1 can retrieve pages through multiple search families but the first B1 design does **not** follow a catalog's runbook title or link to a second-hop document. DSBENCH-3 isolates this gap.
+- All measurements are first observations from panels pasted by the project owner, not raw private stage-loss traces. Source version stamps, exact run timestamps, repeated latency distributions and complete API request budgets are missing.
+- B1.1 narrative extraction lives in an isolated **draft PR** and is **not deployed**; v2.9.0 remains the baseline.
+- The controlled scope cannot support a claim of **zero-configuration document discovery**. A separate unscoped experiment, crowded corpus (>10 candidates), privately annotated unseen tickets and access-limited persona are required.
+
+**Go-forward sequence:** preserve v2.9.0 results; validate B1.1's isolated narrative improvement against DSBENCH-2 and unseen services, measure unnecessary pages/CQL; test the **second-hop service-catalog-to-runbook hypothesis** separately; complete real permission checks on DSBENCH-6; and only then build the broader human review/resolution demo.
 
 ## Dataset V1
 
