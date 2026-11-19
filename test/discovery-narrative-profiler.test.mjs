@@ -116,3 +116,88 @@ test('Overlong narrative is skipped rather than generating unbounded extraction'
   const profile = profileJiraChangeNarrative(issue('x'.repeat(2100) + ' the old route /ledger/v1/export'));
   assert.equal(profile.signals.filter(s => s.extraction === 'narrative_pattern').length, 0);
 });
+
+
+test('No old endpoint is inferred from negation, denial or an existence question', () => {
+  const samples = [
+    'There has never been an old route /freight/v1/parcels in this service.',
+    'We do not have an old route /freight/v1/parcels in this service.',
+    'Is there an old route /freight/v1/parcels that we should retire?',
+    'We checked: the old route /freight/v1/parcels does not exist.',
+    'No previous endpoint /freight/v1/parcels was deployed.',
+  ];
+  for (const statement of samples) {
+    const key = 'NEG-1';
+    assert.deepEqual(profileJiraChangeNarrative(issue(statement, key)), profileJiraChange(issue(statement, key)), statement);
+  }
+});
+
+test('ADF Hypothetical examples heading applies to following paragraphs', () => {
+  const adf = { type: 'doc', version: 1, content: [
+    { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Hypothetical examples' }] },
+    { type: 'paragraph', content: [{ type: 'text', text: 'The old route /freight/v1/parcels was on freight-old.internal.' }] },
+    { type: 'paragraph', content: [{ type: 'text', text: 'The legacy path /warehouse/v1/intake was on old-warehouse.internal.' }] },
+  ] };
+  assert.deepEqual(profileJiraChangeNarrative(issue(adf, 'ADF-1')), profileJiraChange(issue(adf, 'ADF-1')));
+});
+
+test('Evidence quote includes extracted value even beyond the 240th source character', () => {
+  const prefix = 'Technical migration notes '.repeat(15);
+  const description = prefix + 'The old route /freight/v1/parcels was on freight-old.internal.';
+  assert.ok(description.indexOf('/freight/v1/parcels') > 240);
+  const item = issue(description, 'LONG-1');
+  item.fields.updated = '2026-11-19T12:00:00Z';
+  const p = profileJiraChangeNarrative(item);
+  assert.equal(p.signals.filter(s => s.extraction === 'narrative_pattern').length, 2);
+  for (const signal of p.signals.filter(s => s.extraction === 'narrative_pattern')) {
+    assert.ok(signal.source.quote.includes(signal.normalizedValue));
+    assert.ok(signal.source.quote.length <= 240);
+    assert.equal(description.slice(signal.source.startOffset, signal.source.endOffset), signal.normalizedValue);
+    assert.equal(signal.source.sourceUpdated, item.fields.updated);
+    assert.match(signal.source.sourceFingerprint, /^[a-f0-9]{64}$/);
+  }
+  assert.equal(publicNarrativeEvidence(p).every(e => e.sourceUpdated && e.sourceFingerprint), true);
+});
+
+test('Do not silently truncate endpoint templates into partial paths', () => {
+  const samples = [
+    'The old route /freight/v1/parcels/{parcelId} was on freight-old.internal.',
+    'The old route /freight/v1/parcels/{parcelId}/retry was on freight-old.internal.',
+    'The old route /freight/v1/parcels?token=secret was on freight-old.internal.',
+    'The old route /freight/v1/parcels#anchor was on freight-old.internal.',
+  ];
+  for (const value of samples) {
+    assert.equal(profileJiraChangeNarrative(issue(value)).signals.some(s => s.extraction === 'narrative_pattern'), false, value);
+  }
+});
+
+test('No added narrative signal preserves the full original B1 profile', () => {
+  for (const value of [
+    'Something changed. Please check documentation.',
+    'Service: payment-gateway\nOld endpoint: /api/v1/payments\nNew endpoint: /api/v2/payments',
+    'Deployment status: Planned\nNew endpoint: /health',
+    'The old route /freight/v1/parcels does not exist.',
+  ]) {
+    assert.deepEqual(profileJiraChangeNarrative(issue(value)), profileJiraChange(issue(value)), value);
+  }
+});
+
+test('Record the risk that narrative signals evict existing CQL plans under four-call budget', () => {
+  const mixed = issue([
+    'Service: freight-core',
+    'Old endpoint: /api/v1/freight',
+    'New endpoint: /api/v2/freight',
+    'Old hostname: old.freight.internal',
+    'Current hostname: active.freight.internal',
+    'We migrated traffic. The old route /freight/v1/parcels was on legacy.freight.internal.',
+  ].join('\n'), 'MIXED-1');
+  const base = planDiscoveryQueries(profileJiraChange(mixed), { maxCqlQueries: 4, maxDirectLinks: 0 });
+  const experiment = planDiscoveryQueries(profileJiraChangeNarrative(mixed), { maxCqlQueries: 4, maxDirectLinks: 0 });
+  assert.equal(base.queries.length, 4);
+  assert.equal(experiment.queries.length, 4);
+  assert.ok(experiment.queries.some(q => q.searchText === '/freight/v1/parcels'));
+  const displaced = base.queries.map(q => q.searchText).filter(term =>
+    !experiment.queries.some(q => q.searchText === term));
+  assert.ok(displaced.length >= 1, 'Report B1 plan queries lost to B1.1 under the fixed limit');
+  assert.ok(experiment.coverage.omittedCqlQueries >= 1);
+});
