@@ -13,6 +13,9 @@ import { toPublicB1Retrieval } from './discovery/public-retrieval-b1.mjs';
 import { cqlFromIntent, normalizeCqlResponse, resolveDirectPage } from './discovery/confluence-cql.mjs';
 import { LIVE_BENCHMARK, isBenchmarkIssueKey, scopedBenchmarkCql } from './benchmark/live-scope.mjs';
 import { toPublicLiveBenchmark } from './benchmark/public-live-report.mjs';
+import { evidenceFromReadablePage, toPublicInvestigation } from './investigation/public-investigation.mjs';
+import { investigationScope } from './investigation/scope.mjs';
+import { authorizeInvestigationPage } from './investigation/authorize-investigation-page.mjs';
 
 const Resolver = ResolverModule.default ?? ResolverModule;
 const resolver = new Resolver();
@@ -132,6 +135,62 @@ resolver.define('scanB1', async ({ payload }) => {
   } catch {
     // Never expose raw search errors, candidate hits or document bodies.
     return { ok: false, message: 'B1 discovery diagnostic failed.' };
+  }
+});
+
+// Read-only investigation path. The B1 engine, planner and retrieval module
+// are unchanged; this is a distinct, user-authorized presentation of evidence.
+// The frozen DSBENCH tickets remain server-scoped to the benchmark corpus.
+resolver.define('startInvestigation', async ({ payload }) => {
+  try {
+    if (!validIssueKey(payload?.issueKey)) throw new Error('Invalid issue key.');
+    const issue = await gateway.readIssue(payload.issueKey);
+    const profile = profileJiraChange(issue);
+    const scoped = investigationScope(payload.issueKey, issue);
+    const plan = planDiscoveryQueries(profile, {
+      maxCqlQueries: scoped ? LIVE_BENCHMARK.maxCqlCalls : 4,
+      maxDirectLinks: scoped ? 0 : 5,
+    });
+    const authorizedPageEvidence = new Map();
+    const readGateway = createB1Gateway({ scoped });
+    const retrieval = await runB1Retrieval(plan, {
+      ...readGateway,
+      async readPage(pageId, siteId) {
+        // Explicitly asUser and same verified site as the unchanged B1 gateway.
+        const page = await readGateway.readPage(pageId, siteId);
+        const verified = await authorizeInvestigationPage({
+          page, pageId, siteId, scoped,
+          readAncestors: async id => {
+            const response = await api.asUser().requestConfluence(
+              route`/wiki/api/v2/pages/${id}/ancestors?limit=100`,
+              { headers: { Accept: 'application/json' } },
+            );
+            const data = await requireOk(response, 'Confluence ancestors');
+            return { results: data.results, next: data?._links?.next || data?.next || null };
+          },
+        });
+        const excerpt = evidenceFromReadablePage(page, profile);
+        authorizedPageEvidence.set(String(pageId), {
+          ...(excerpt ?? {}),
+          pageTitle: verified.pageTitle,
+          siteOrigin: verified.siteOrigin,
+        });
+        return page;
+      },
+    }, {
+      maxCqlCalls: scoped ? LIVE_BENCHMARK.maxCqlCalls : 4,
+      readBudget: scoped ? LIVE_BENCHMARK.readBudget : 10,
+      searchLimit: scoped ? LIVE_BENCHMARK.searchLimit : 20,
+    });
+    return {
+      ok: true,
+      data: toPublicInvestigation({
+        profile, issue, plan, retrieval, authorizedPageEvidence, scoped,
+      }),
+    };
+  } catch {
+    // Never reveal unread or unauthorized page identities through errors.
+    return { ok: false, message: 'Read-only investigation could not be completed.' };
   }
 });
 

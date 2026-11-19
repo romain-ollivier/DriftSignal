@@ -34,3 +34,4 @@ permissions:
     - read:jira-work
     - search:confluence
     - read:page:confluence
+    - read:content.metadata:confluence

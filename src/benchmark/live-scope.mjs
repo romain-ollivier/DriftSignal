@@ -7,6 +7,7 @@
 export const LIVE_BENCHMARK = Object.freeze({
   projectKey: 'DSBENCH',
   confluenceSpaceKey: 'DSBMK',
+  confluenceSpaceId: '5013508',
   corpusAncestorId: '5177345',
   corpusRevision: '1.1',
   engineBaselineCommit: '090e74f',
