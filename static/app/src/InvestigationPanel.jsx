@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { invoke, router } from '@forge/bridge';
+import PrivateReviewControls from './PrivateReviewControls.jsx';
 
 /**
  * MVP 1: read-only investigation; does not save decisions, classify drift,
@@ -102,6 +103,7 @@ export default function InvestigationPanel({ issueKey }) {
                 ? <blockquote className="investigationQuote">{doc.contentEvidence.quote}</blockquote>
                 : <p className="note">No readable source excerpt available. Open the page to verify its instructions.</p>}
               <p className="note">An endpoint mention may be historical, conditional, rollback-only or active. Human interpretation is required.</p>
+              <PrivateReviewControls key={issueKey + ':' + doc.pageId} issueKey={issueKey} pageId={doc.pageId} pageVersion={doc.contentEvidence?.pageVersion ?? null} />
             </div>}
           </div>)}
       </div>
