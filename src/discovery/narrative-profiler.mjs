@@ -99,7 +99,13 @@ export function profileJiraChangeNarrative(issue) {
     for (const match of text.matchAll(ANCHOR_RE)) {
       if (profile.signals.length >= MAX_SIGNALS) break;
       const context = sentenceContext(text, match.index);
-      if (EXCLUSION_RE.test(context.sentence) || QUOTED_DOC_RE.test(context.sentence)) continue;
+      // Examine linguistic context, not hostname tokens: a legitimate
+      // domain such as legacy-settle.example.internal contains "example".
+      // This is not evidence that the Jira statement is hypothetical.
+      const trailing = text.slice(match.index + match[0].length);
+      const speculativeAfter = /^\s+(?:might|may|could|would|should)\b/i.test(trailing)
+        || /^\s+(?:is|was)\s+(?:an?\s+)?(?:example|hypothetical|proposed)\b/i.test(trailing);
+      if (EXCLUSION_RE.test(context.prefix) || QUOTED_DOC_RE.test(context.prefix) || speculativeAfter) continue;
       // Do not silently discard URL query/fragment data from a candidate:
       // the whole token is unsafe to treat as a validated endpoint signal.
       if (/[?#]/.test(text[match.index + match[0].length] ?? '')) continue;
