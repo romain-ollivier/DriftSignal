@@ -118,8 +118,8 @@
     },
     {
       "pageId": "10011",
-      "title": "Voyager Scheduler Recovery Guide",
-      "body": "<h2>Scheduler recovery</h2><p>For the scheduled Voyager jobs, restart the queue worker after the migration.</p>",
+      "title": "Queue Worker Recovery Guide",
+      "body": "<h2>Queue worker recovery</h2><p>Restart the nightly queue worker after the migration, and replay pending tasks as needed.</p>",
       "accessibleTo": [
         "engineer",
         "limited"
@@ -128,7 +128,7 @@
     {
       "pageId": "10012",
       "title": "Voyager Scheduler Service Catalog",
-      "body": "<p>Component: Voyager Scheduler</p><p>Recovery guide: Voyager Scheduler Recovery Guide.</p>",
+      "body": "<p>Component: Voyager Scheduler</p><p>Recovery guide: Queue Worker Recovery Guide.</p>",
       "accessibleTo": [
         "engineer",
         "limited"
