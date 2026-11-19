@@ -45,7 +45,12 @@ function publicJiraEvidence(profile) {
     .filter(signal => EXPOSED_FAMILIES.has(signal.family))
     .slice(0, 25)
     .map(signal => {
-      const value = String(signal.normalizedValue ?? '').slice(0, 150);
+      // Until negated-deployment parsing is reviewed separately, always
+      // show the literal Jira declaration, never a possibly wrong
+      // normalized 'deployed' interpretation of 'Not deployed'.
+      const value = String(signal.family === 'deployment_state'
+        ? (signal.rawValue ?? '')
+        : (signal.normalizedValue ?? '')).slice(0, 150);
       const rawQuote = String(signal.source?.quote ?? '');
       // The legacy profiler can truncate long quotes. Do not claim the
       // resulting excerpt proves an endpoint if it omits the literal value.
