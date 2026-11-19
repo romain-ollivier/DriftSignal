@@ -42,6 +42,16 @@ export default function InvestigationPanel({ issueKey }) {
     }
   }
 
+  // Any failed fresh source verification invalidates the entire rendered
+  // investigation, including the parent Confluence quote and document title.
+  // A user must run a new asUser investigation before further decisions.
+  function invalidateSourceEvidence() {
+    requestVersion.current += 1;
+    setReport(null);
+    setFocusedPage(null);
+    setError('Source access or version could not be verified. Run investigation again.');
+  }
+
   return <section className="sourceCard investigation">
     <div className="sourceHead">
       <strong>Investigate documentation</strong>
@@ -103,7 +113,11 @@ export default function InvestigationPanel({ issueKey }) {
                 ? <blockquote className="investigationQuote">{doc.contentEvidence.quote}</blockquote>
                 : <p className="note">No readable source excerpt available. Open the page to verify its instructions.</p>}
               <p className="note">An endpoint mention may be historical, conditional, rollback-only or active. Human interpretation is required.</p>
-              <PrivateReviewControls key={issueKey + ':' + doc.pageId} issueKey={issueKey} pageId={doc.pageId} pageVersion={doc.contentEvidence?.pageVersion ?? null} />
+              <PrivateReviewControls key={issueKey + ':' + doc.pageId}
+                issueKey={report.issueKey} pageId={doc.pageId}
+                jiraUpdated={report.jiraUpdated}
+                pageVersion={doc.contentEvidence?.pageVersion ?? null}
+                onAccessUnverified={invalidateSourceEvidence} />
             </div>}
           </div>)}
       </div>
