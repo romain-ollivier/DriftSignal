@@ -1,6 +1,6 @@
 # Benchmark V1 — Atlassian seeding plan (NOT EXECUTED)
 
-**Status (2026-11-19):** Confluence **15/15 pages created** under a dedicated synthetic corpus parent in DSBMK; one private page has independently verified `VIEW_RESTRICTED` state and creator-only update grant. **Jira project creation remains blocked by connector capabilities; 0/6 test tickets created.**  
+**Status (2026-11-19):** Confluence **15/15 pages created** in DSBMK; one private page confirmed `VIEW_RESTRICTED`. Jira project **DSBENCH** was created through the Jira UI and **6/6 tickets imported and read-verified**. **Two issues are not yet benchmark-ready:** DSBENCH-3 needs the native Jira component `Voyager Scheduler`; DSBENCH-6 needs `Settlement Core`. The live private mapping is intentionally NOT committed to GitHub.  
 **Tenant provided by project owner:** `https://one-atlas-mezt.atlassian.net`  
 **Target Confluence space key:** `DSBMK`  
 **Space overview supplied:** `https://one-atlas-mezt.atlassian.net/wiki/spaces/DSBMK/overview?homepageId=5013747`  
@@ -36,6 +36,7 @@
 - Created 15 distinct synthetic pages in Confluence space DSBMK under the synthetic corpus parent; 15/15 were visible in a controlled CQL space listing to the creator, in addition to the homepage, parent and automatically generated template pages. Their **actual IDs belong to a private evaluation mapping**, not this public document.
 - Created private `Settlement Emergency Failover Procedure` with the `private` create option. Verified `VIEW_RESTRICTED` by reading Confluence restriction state; explicit grant was creator `update`. **The limited persona has not yet been tested in a separate Atlassian session.**
 - Confirmed at least one uploaded document's HTML headings/text survive a full Confluence read.
+- **Corpus isolation checked live:** CQL `space = "DSBMK" AND type = page AND ancestor = 5177345` returned **exactly all 15 synthetic pages** (no homepage, parent, or templated pages), including the authorized user's private page. This descendant scope should be preferred over a space-only filter for the principal paired study. Preserve the same scope for B0 and B1. Keep the unscoped trial separately for the zero-configuration claim.
 - CQL probes with `space = "DSBMK"` (initial results, same authorized principal):
   - `title ~ "Orchid"` → 1 expected runbook
   - `title ~ "Queue Worker Recovery Guide"` → 1 expected runbook
@@ -45,8 +46,8 @@
   - `text ~ "legacy-settle"` → **0 pages**
   - `text ~ "Voyager Scheduler"` → 1 service catalog page
 - Interpret CQL results cautiously: Confluence tokenization and asynchronous indexing are genuine confounders. A literal hostname miss does not mean the page is unreadable or impossible to find through the old endpoint.
-- Jira project `CLSD` belongs to a legal service desk, and is deliberately not repurposed. **Do not use the connector's `createProject` tool to create Jira project**: it creates an Atlassian Projects (Atlas) entity, not a Jira software project. The available Atlassian plugin does not expose Jira project creation. Manual Jira UI setup is required before connector-based ticket import.
-- Reverify six Jira source field values, especially component **Voyager Scheduler** for BMK-103 and **Settlement Core** for BMK-106. Jira components require actual component records; do not silently omit them or substitute text labels.
+- Jira project `CLSD` belongs to a legal service desk and remains untouched. Jira Software company-managed project **DSBENCH** (id `10202`) was created manually in Jira and confirmed empty before seed. Atlassian connector created tickets **DSBENCH-1…DSBENCH-6**, all as `Tâche`, then read and checked their titles/description signals. Because native components do not exist yet (project component count: zero), DSBENCH-3 and DSBENCH-6 were created with empty component arrays and MUST be updated when `Voyager Scheduler` and `Settlement Core` components exist. They are NOT full-fidelity imports yet.
+- Six ticket summaries and essential technical description signals were independently read and verified. Jira descriptions were formatted as separate Markdown paragraphs to retain source line boundaries. **Incomplete fields must be fixed before benchmark:** create Jira components `Voyager Scheduler` and `Settlement Core` through Jira project settings, then attach to DSBENCH-3 and DSBENCH-6 respectively and re-read both issues. Do not add components as text to the Jira description.
 - Before the first live comparative trial, implement identical CQL scope for both B0 and B1 and a 10-read limit for both in a **benchmark-only execution path**. The current Forge v2.8.0 B0 production diagnostic still has a different read budget and unscoped searches.
 
 ## Scenario-to-ticket mapping
