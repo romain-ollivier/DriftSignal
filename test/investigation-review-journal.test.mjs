@@ -11,11 +11,8 @@ function inMemoryStorage() {
   const values=new Map();
   let collisions=0;
   const storage={
-    async list(prefix, limit){
-      const rows=[...values.entries()].filter(([key])=>key.startsWith(prefix))
-        .map(([key,value])=>({key,value}));
-      if(rows.length>limit)throw new Error('Review history exceeds limit');
-      return rows;
+    async get(key){
+      return values.has(key) ? structuredClone(values.get(key)) : undefined;
     },
     async putNew(key,value){
       if(values.has(key)){ collisions++; throw new Error('ALREADY_EXISTS'); }
@@ -97,14 +94,14 @@ test('History corruption and missing revisions always fail closed',async()=>{
   await journal.begin({actorId:accountId,source,now});
   const prefix=reviewKeyPrefix({accountId,issueKey:source.issueKey,pageId:source.pageId});
   mem.values.set(prefix+'r000003',{...mem.values.get(prefix+'r000001'),revision:3});
-  await assert.rejects(journal.read({actorId:accountId,source}),/Missing, duplicate or out-of-order/);
+  await assert.rejects(journal.read({actorId:accountId,source}),/Missing review revision/);
 });
 function mockSources(overrides={}){
   const calls=[];
   const base={
     readIssue: async key=>{calls.push('jira');return{key,fields:{updated:source.jiraUpdated}};},
     readPage: async id=>{calls.push('page');return{
-      id,version:{number:source.pageVersion},status:'current',
+      id,spaceId:'5013508',version:{number:source.pageVersion},status:'current',
       body:{storage:{value:'<p>Normal recovery route</p>'}},
     };},
     readAncestors:async()=>{calls.push('ancestors');return{
@@ -157,4 +154,42 @@ test('Ordinary Jira issue does not require benchmark ancestors but requires user
   });
   assert.equal(result.issueKey,'PAY-55');
   assert.deepEqual(m.calls,['jira','page']);
+});
+
+
+test('Strict gets detect the latest committed revision even when an index query would lag', async () => {
+  const mem = inMemoryStorage();
+  // Deliberately deceptive eventual-consistency query, which must never be used.
+  mem.storage.list = async () => [{ key:'outdated-r1', value:{revision:1} }];
+  const journal = createPrivateReviewJournal(mem.storage);
+  const r1 = await journal.begin({actorId:accountId, source, now});
+  const r2 = await journal.decide(opinion(r1));
+  assert.equal(r2.revision,2);
+  const reread = await journal.read({actorId:accountId,source});
+  assert.equal(reread.revision,2);
+  assert.equal(reread.state,'NEEDS_EVIDENCE');
+});
+
+test('Moved benchmark page in another space is rejected even with valid root ancestor', async () => {
+  const m=mockSources({
+    readPage: async id=>({
+      id,spaceId:'9999999',version:{number:2},status:'current',
+      body:{storage:{value:'A still-readable moved document'}},
+    }),
+  });
+  await assert.rejects(
+    authorizeReviewSource({issueKey:source.issueKey,pageId:source.pageId,...m}),
+    /outside the benchmark Confluence space/,
+  );
+});
+
+test('Incomplete at exactly 100 ancestors fails closed', async () => {
+  const m=mockSources({readAncestors:async()=>({
+    results:Array.from({length:100},(_,i)=>({id:i===0?'5177345':String(900000+i)})),
+    next:null,
+  })});
+  await assert.rejects(
+    authorizeReviewSource({issueKey:source.issueKey,pageId:source.pageId,...m}),
+    /ancestry/,
+  );
 });
