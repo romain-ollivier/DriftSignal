@@ -1,21 +1,17 @@
-import { kvs, WhereConditions } from '@forge/kvs';
+import { kvs } from '@forge/kvs';
 
 /**
- * Installation-scoped KVS. All access policies live in the resolver BEFORE
- * invoking this storage adapter; KVS is not Atlassian user-permission aware.
+ * Installation-scoped KVS adapter. Access control is performed by the server
+ * before this adapter is called. KVS query() has eventual consistency and
+ * MUST NOT be used to determine the latest review revision.
  */
 export const privateReviewStorage = Object.freeze({
-  async list(prefix, limit) {
-    const page = await kvs.query().where('key', WhereConditions.beginsWith(prefix))
-      .limit(limit).getMany();
-    // Fail closed rather than interpret an incomplete history as the latest.
-    if (page?.nextCursor) {
-      throw new Error('Review history exceeds its retrievable limit.');
-    }
-    return (page?.results ?? []).map(entry=>({key:entry.key,value:entry.value}));
+  async get(key) {
+    // A direct kvs.get(key) is strictly consistent.
+    return kvs.get(key);
   },
   async putNew(key, value) {
-    // A deterministic revision key must never be silently overwritten.
+    // Deterministic key + FAIL_IF_EXISTS avoids last-writer-wins.
     await kvs.set(key, value, { keyPolicy: 'FAIL_IF_EXISTS' });
   },
 });
