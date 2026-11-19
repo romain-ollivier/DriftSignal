@@ -338,8 +338,8 @@
           "pageId": "10006",
           "relevance": "relevant",
           "role": "procedure_to_review",
-          "incompatibleInstruction": "yes",
-          "reason": "Standard recovery still uses retired route"
+          "incompatibleInstruction": "unknown",
+          "reason": "The active runbook references the old route, but Jira only states traffic moved; deprecation or incompatibility is not established."
         },
         {
           "pageId": "10007",
@@ -901,6 +901,19 @@
           "reason": "No grounded relationship to this change in this synthetic scenario"
         }
       ]
+    }
+  ],
+  "corpusRevision": "1.1",
+  "annotationChangeLog": [
+    {
+      "revision": "1.1",
+      "date": "2026-11-19",
+      "scenario": "BMK-102",
+      "pageId": "10006",
+      "field": "incompatibleInstruction",
+      "from": "yes",
+      "to": "unknown",
+      "reason": "Traffic moved is not evidence the previous route became invalid. This corrects the benchmark label only, not the Jira description or Confluence page."
     }
   ]
 }
