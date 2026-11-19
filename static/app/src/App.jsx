@@ -23,6 +23,9 @@ export default function App() {
   const [b0Data, setB0Data] = useState(null);
   const [b0Busy, setB0Busy] = useState(false);
   const [b0Error, setB0Error] = useState('');
+  const [b1Data, setB1Data] = useState(null);
+  const [b1Busy, setB1Busy] = useState(false);
+  const [b1Error, setB1Error] = useState('');
   const [contextLoading, setContextLoading] = useState(true);
 
   useEffect(() => {
@@ -65,6 +68,22 @@ export default function App() {
     }
   }
 
+  async function runB1() {
+    if (!issueKey) return;
+    setB1Busy(true);
+    setB1Data(null);
+    setB1Error('');
+    try {
+      const response = await invoke('scanB1', { issueKey });
+      if (!response?.ok) throw new Error(response?.message || 'Could not run B1.');
+      setB1Data(response.data);
+    } catch (err) {
+      setB1Error(err instanceof Error ? err.message : 'B1 diagnostic failed.');
+    } finally {
+      setB1Busy(false);
+    }
+  }
+
   return <main className="shell">
     <header className="topline"><div className="brand"><span className="logo">◈</span><span>DriftSignal</span></div><span className="prototype">TECHNICAL POC · V0.1</span></header>
     <section className="hero">
@@ -79,7 +98,8 @@ export default function App() {
         <button disabled={!issueKey || busy} onClick={scan}>{busy ? 'Scanning…' : 'Scan documentation →'}</button>
       </div>
       <p className="note">Discovery benchmark: compare the historical single-token Confluence search separately from the M1 scan.</p>
-      <button className="secondary" disabled={!issueKey || b0Busy || busy} onClick={runB0}>{b0Busy ? 'Running B0…' : 'Run B0 discovery diagnostic'}</button>
+      <button className="secondary" disabled={!issueKey || b0Busy || b1Busy || busy} onClick={runB0}>{b0Busy ? 'Running B0…' : 'Run B0 discovery diagnostic'}</button>
+      <button className="secondary" disabled={!issueKey || b0Busy || b1Busy || busy} onClick={runB1}>{b1Busy ? 'Running B1…' : 'Run B1 multi-signal retrieval'}</button>
       {!issueKey && !contextLoading && <p className="note">Open a Jira issue and select Apps → DriftSignal. This Confluence screen is informational.</p>}
     </section>
     {error && <div className="message danger">{error}</div>}
@@ -100,6 +120,22 @@ export default function App() {
       {b0Data.coverage.failedOrSkippedReads && <p className="note">Some source reads could not be completed. Results are partial.</p>}
       {b0Data.coverage.searchFailed && <p className="note">Confluence search failed. No coverage claim can be made.</p>}
       <p className="note">{b0Data.note}</p>
+    </section>}
+    {b1Error && <div className="message danger">{b1Error}</div>}
+    {b1Data && <section className="sourceCard">
+      <div className="sourceHead"><strong>B1 · Multi-signal retrieval</strong><Status value={b1Data.status}/></div>
+      <p><strong>Jira input:</strong> {b1Data.inputQuality} · <strong>Planned CQL queries:</strong> {b1Data.plannedSearches}</p>
+      <p><strong>Readable documents:</strong> {b1Data.coverage.usableDocuments} · <strong>Elapsed:</strong> {Math.round(b1Data.elapsedMs ?? 0)} ms</p>
+      <p><strong>Outcome:</strong> {b1Data.planStatus === 'INSUFFICIENT_SEARCH_SIGNALS' ? 'Insufficient search signals' : b1Data.result?.replaceAll('_', ' ')}</p>
+      {b1Data.documents?.map((doc) => <div className="finding" key={doc.pageId}>
+        <div className="sourceHead"><strong>{doc.title || 'Confluence page'}</strong><Status value="FETCHED_ONLY" /></div>
+        <p className="note">Discovered through: {doc.sourceFamilies?.join(', ') || 'Not specified'}</p>
+        {doc.url && <button className="secondary" onClick={() => router.open(doc.url)}>Open source in Confluence ↗</button>}
+      </div>)}
+      {b1Data.coverage.searchIncomplete && <p className="note">Search coverage is incomplete: more results, skipped queries or search failures may exist.</p>}
+      {b1Data.coverage.readBudgetTruncated && <p className="note">Some discovered pages were not selected under the read budget.</p>}
+      {b1Data.coverage.someReadsFailed && <p className="note">Some selected pages were inaccessible or had no usable body.</p>}
+      <p className="note">{b1Data.note} This run is not yet an equal-budget B0/B1 relevance benchmark.</p>
     </section>}
     {data && <>
       <section className={`summary ${MESSAGES[data.outcome]?.[2] || 'neutral'}`}>
