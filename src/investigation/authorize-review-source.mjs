@@ -31,11 +31,17 @@ export async function authorizeReviewSource({
   if (isBenchmarkIssueKey(issueKey)) {
     // The benchmark context must NEVER be able to persist a record for an
     // otherwise accessible page outside the frozen DSBMK descendant corpus.
+    // A moved corpus root retains the same ancestor ID, so ancestry alone
+    // is insufficient. The page must still belong to the DSBMK space.
+    if (String(page.spaceId ?? '') !== LIVE_BENCHMARK.confluenceSpaceId) {
+      throw new Error('Document moved outside the benchmark Confluence space.');
+    }
     if (String(pageId) === LIVE_BENCHMARK.corpusAncestorId) {
       throw new Error('Benchmark corpus root is not a candidate document.');
     }
     const ancestry = await readAncestors(String(pageId));
-    if (!Array.isArray(ancestry?.results) || ancestry?.next) {
+    if (!Array.isArray(ancestry?.results) || ancestry.results.length >= 100 ||
+        ancestry?.next) {
       throw new Error('Complete authenticated Confluence ancestry is required.');
     }
     if (!ancestry.results.some(parent =>
