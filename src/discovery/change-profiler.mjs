@@ -200,10 +200,17 @@ export function profileJiraChange(issue) {
     }
     if (/^deployment\s+status\s*:/i.test(line)) {
       const value = line.replace(/^deployment\s+status\s*:\s*/i, '').trim();
-      const state = /\brolled\s*back\b/i.test(value) ? 'rolled_back'
-        : /\bdeployed\b/i.test(value) ? 'deployed'
-        : /\b(in.progress|deploying)\b/i.test(value) ? 'in_progress'
-        : /\b(planned|scheduled)\b/i.test(value) ? 'planned' : 'unknown';
+      // A negated status is not an affirmative deployment fact. In
+      // particular, "Not deployed" must never become "deployed".
+      // Mixed or ambiguous negative statements remain unknown.
+      const hasNegation = /\b(?:not|never|no|without)\b/i.test(value);
+      const explicitlyNotDeployed = /\b(?:not|never)\s+(?:(?:yet|currently|ever)\s+)?deployed\b/i.test(value);
+      const state = hasNegation
+        ? (explicitlyNotDeployed ? 'not_deployed' : 'unknown')
+        : /\brolled\s*back\b/i.test(value) ? 'rolled_back'
+          : /\bdeployed\b/i.test(value) ? 'deployed'
+            : /\b(in.progress|deploying)\b/i.test(value) ? 'in_progress'
+              : /\b(planned|scheduled)\b/i.test(value) ? 'planned' : 'unknown';
       deploymentDeclarations.push(state);
       add('deployment_state', 'unknown', value, state, ...source);
       if (/\bproduction\b|\bprod\b/i.test(value)) environmentDeclarations.push('production');

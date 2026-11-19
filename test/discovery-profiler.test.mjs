@@ -124,3 +124,23 @@ test('B1 normalizes explicit HTTPS endpoints while preserving raw values and sou
   assert.equal(signals(result, 'endpoint')[0].rawValue, 'HTTPS://API.EXAMPLE.COM/api/v1/payments');
   assert.equal(signals(result, 'endpoint')[0].source.quote, 'Old endpoint: HTTPS://API.EXAMPLE.COM/api/v1/payments');
 });
+
+
+test('Negated deployment must not become affirmative deployed state', () => {
+  for (const [label, expected] of [
+    ['Deployment status: Not deployed', 'not_deployed'],
+    ['Deployment status: Not yet deployed', 'not_deployed'],
+    ['Deployment status: Never deployed', 'not_deployed'],
+    ['Deployment status: Not deployed to production', 'not_deployed'],
+    ['Deployment status: Not rolled back', 'unknown'],
+    ['Deployment status: Not planned', 'unknown'],
+    ['Deployment status: Not in progress', 'unknown'],
+    ['Deployment status: Deployed to production', 'deployed'],
+    ['Deployment status: Planned', 'planned'],
+    ['Deployment status: Rolled back', 'rolled_back'],
+  ]) {
+    const result = profileJiraChange(issue('Service: payment-gateway\n' + label));
+    assert.equal(result.context.deploymentState, expected, label);
+    assert.equal(signals(result, 'deployment_state')[0].normalizedValue, expected, label);
+  }
+});
