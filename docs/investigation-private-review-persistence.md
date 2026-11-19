@@ -1,5 +1,7 @@
 # Investigation MVP III — private human-review persistence
 
+**Technical-review corrections (2026-11-19):** Writes now require a browser-provided displayed source tuple (`issueKey`, `jiraUpdated`, `pageId`, `pageVersion`) that must match the freshly asUser-read source. The tuple is only a precondition, never authority. After any reauthorization/write failure, both private notes and the parent Confluence evidence card are cleared from the open tab. The fixed corpus DSBMK space ID `5013508` and root ancestry must both match; `read:content.metadata:confluence` is declared for the ancestors endpoint. KVS journal reads now use bounded strongly consistent per-revision `kvs.get`, not eventually consistent prefix queries; writes continue using `FAIL_IF_EXISTS`. The standalone state contract no longer exports any recheck or closure functions. A new cycle after a page edit is still deferred pending review, and no live two-persona validation has occurred.
+
 **Status:** implemented on draft PR #6 only; stacked on PR #5 and PR #4. **Not merged, not deployed**, no user reviews persisted on the tenant yet. Historical Forge Development v2.9.0 benchmarks remain unchanged.
 
 ## Functional scope
