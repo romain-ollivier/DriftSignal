@@ -14,6 +14,15 @@ A single Jira issue panel should let a production engineer follow the end-to-end
 
 The user interface must not mistake **document retrieval**, **contextual relevance**, and **instruction incompatibility** for the same decision.
 
+## Counter-review: source publication hardening (2026-11-19)
+
+- The Jira issue key is checked after a canonical `asUser()` Jira read; an unregistered benchmark key cannot fall back to an unscoped search.
+- An ADF block containing a linked Confluence title or inline card is not published as a mixed Jira evidence quote. The B1 profiler itself remains unchanged.
+- A document's GET ID must match the requested page ID, its status must be `current`, and in DSBENCH it must still belong to DSBMK space ID `5013508` with a confirmed *page*-typed corpus root `5177345` in a complete ancestry response. Rejected GETs cannot enter the public investigation projection.
+- Public titles come from verified GETs; links are built from the asUser CQL-verified tenant origin and the confirmed page ID, never from untrusted search-hit URLs.
+- **Cost disclosure:** each successful scoped GET now performs one additional Confluence ancestors API call. This changes investigation API-call cost, **not** the original scoped B0/B1 benchmark or its 10-body-read cap. Report and monitor this overhead separately.
+- Requires `read:content.metadata:confluence` scope and installation consent before isolated Forge testing.
+
 ## Milestone I implementation (review branch only)
 
 - New Forge resolver startInvestigation reuses the existing B1 Change Profiler, Query Planner and B1 retrieval engine, with read budget 10 and CQL cap 4.
