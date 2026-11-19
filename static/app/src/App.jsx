@@ -174,7 +174,9 @@ export default function App() {
       {benchData.narrativeEvidence?.map((evidence, index) => <div className="finding" key={'narrative-' + index}>
         <strong>Jira narrative evidence · {evidence.family} ({evidence.role})</strong>
         <p><code>{evidence.value}</code></p>
-        <p className="note">Source: {evidence.jiraField} · {evidence.jiraPath}</p>
+        <p className="note">Source: {evidence.jiraField} · {evidence.jiraPath} · characters {evidence.startOffset ?? '?'}–{evidence.endOffset ?? '?'}</p>
+        {evidence.sourceUpdated && <p className="note">Jira updated: {evidence.sourceUpdated}</p>}
+        {evidence.sourceFingerprint && <p className="note">Source SHA-256: <code>{evidence.sourceFingerprint.slice(0, 16)}…</code></p>}
         <p className="note">Passage: “{evidence.quote}”</p>
         <p className="note">Extraction is not proof that the old endpoint was retired or that a runbook is inconsistent.</p>
       </div>)}
