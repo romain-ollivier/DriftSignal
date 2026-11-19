@@ -92,7 +92,7 @@ export default function App() {
     if (!isBenchmarkTicket || benchBusy) return;
     setBenchBusy(true); setBenchError('');
     try {
-      const method = variant === 'B0' ? 'scanBenchmarkB0' : 'scanBenchmarkB1';
+      const method = variant === 'B0' ? 'scanBenchmarkB0' : variant === 'B11' ? 'scanBenchmarkB11' : 'scanBenchmarkB1';
       const response = await invoke(method, { issueKey });
       if (!response?.ok) throw new Error(response?.message || 'Benchmark failed.');
       setBenchResults((previous) => ({ ...previous, [variant]: response.data }));
@@ -124,6 +124,7 @@ export default function App() {
         <p className="note">Same DSBMK descendant corpus, 10 maximum body reads each. Old unscoped B0/B1 controls above remain unchanged. The mode is retrieval-only, not a relevance benchmark.</p>
         <button className="secondary" disabled={benchBusy || busy || b0Busy || b1Busy} onClick={() => runScopedBenchmark('B0')}>{benchBusy ? 'Running benchmark…' : 'Benchmark · scoped B0'}</button>
         <button className="secondary" disabled={benchBusy || busy || b0Busy || b1Busy} onClick={() => runScopedBenchmark('B1')}>{benchBusy ? 'Running benchmark…' : 'Benchmark · scoped B1'}</button>
+        <button className="secondary" disabled={benchBusy || busy || b0Busy || b1Busy} onClick={() => runScopedBenchmark('B11')}>{benchBusy ? 'Running benchmark…' : 'Benchmark · scoped B1.1 (experimental)'}</button>
       </div>}
       {!issueKey && !contextLoading && <p className="note">Open a Jira issue and select Apps → DriftSignal. This Confluence screen is informational.</p>}
     </section>
@@ -163,13 +164,20 @@ export default function App() {
       <p className="note">{b1Data.note} This run is not yet an equal-budget B0/B1 relevance benchmark.</p>
     </section>}
     {benchError && <div className="message danger">{benchError}</div>}
-    {['B0', 'B1'].map((variant) => {
+    {['B0', 'B1', 'B11'].map((variant) => {
       const benchData = benchResults[variant];
       return benchData && <section className="sourceCard" key={variant}>
-      <div className="sourceHead"><strong>{benchData.variant === 'B0' ? 'Controlled benchmark · B0' : 'Controlled benchmark · B1'}</strong><Status value={benchData.status}/></div>
+      <div className="sourceHead"><strong>{variant === 'B0' ? 'Controlled benchmark · B0' : variant === 'B11' ? 'Controlled benchmark · B1.1 (experimental)' : 'Controlled benchmark · B1'}</strong><Status value={benchData.status}/></div>
       <p><strong>Corpus:</strong> DSBMK · Revision {benchData.benchmark.corpusRevision} · <strong>Read cap:</strong> {benchData.benchmark.readBudget} pages</p>
       <p><strong>CQL queries:</strong> {benchData.benchmark.plannedSearches} planned · {benchData.benchmark.searchesAttempted} attempted · {benchData.benchmark.searchesSucceeded} successful · {benchData.benchmark.searchesFailed} failed</p>
       <p><strong>Usable, authorized pages:</strong> {benchData.benchmark.usableDocuments} · <strong>End-to-end elapsed:</strong> {Math.round(benchData.benchmark.elapsedMs ?? 0)} ms</p>
+      {benchData.narrativeEvidence?.map((evidence, index) => <div className="finding" key={'narrative-' + index}>
+        <strong>Jira narrative evidence · {evidence.family} ({evidence.role})</strong>
+        <p><code>{evidence.value}</code></p>
+        <p className="note">Source: {evidence.jiraField} · {evidence.jiraPath}</p>
+        <p className="note">Passage: “{evidence.quote}”</p>
+        <p className="note">Extraction is not proof that the old endpoint was retired or that a runbook is inconsistent.</p>
+      </div>)}
       {benchData.benchmark.queryExecutions.map((query, index) => <p className="note" key={index}>CQL {index + 1}: {query.family} · {query.outcome} · {query.elapsedMs == null ? 'duration unavailable' : Math.round(query.elapsedMs) + ' ms'}</p>)}
       {benchData.documents?.map((doc) => <div className="finding" key={doc.pageId}>
         <div className="sourceHead"><strong>{doc.title || 'Confluence page'}</strong><Status value="FETCHED_ONLY"/></div>
