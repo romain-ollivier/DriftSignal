@@ -43,15 +43,17 @@ async function readJournal(storage, prefix, actorId, issueKey, pageId) {
   // deterministic key offers a strictly consistent read of a committed rN.
   // Bound the scan to 30 events; never return r1 while committed r2 exists.
   let latest = null;
+  let missingRevision = false;
   for (let revision = 1; revision <= MAX_EVENTS; revision++) {
+    // Strongly consistent direct gets across ALL bounded revision slots.
+    // A journal containing r1 and r4 must not return r1 as current.
     const value = await storage.get(keyForRevision(prefix, revision));
     if (value === undefined) {
-      // Detect a gap immediately after the first missing revision.
-      if (revision < MAX_EVENTS &&
-          await storage.get(keyForRevision(prefix, revision + 1)) !== undefined) {
-        throw new Error('Missing review revision; journal integrity could not be verified.');
-      }
-      return latest;
+      missingRevision = true;
+      continue;
+    }
+    if (missingRevision) {
+      throw new Error('Missing review revision; journal integrity could not be verified.');
     }
     assertRecord({ issueKey, pageId }, actorId, value);
     if (value.revision !== revision || !Array.isArray(value.history) ||
@@ -70,7 +72,7 @@ function project(record, source) {
   const stale = record.jiraUpdated !== source.jiraUpdated ||
     record.pageVersion !== source.pageVersion;
   // PRIVATE to the authenticated current actor only, after fresh asUser checks.
-  return { ...record, stale, canDecide: !stale };
+  return { ...record, stale, canDecide: !stale && record.revision < MAX_EVENTS };
 }
 export function createPrivateReviewJournal(storage) {
   if(typeof storage?.get!=='function'||typeof storage?.putNew!=='function'){
