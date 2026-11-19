@@ -7,6 +7,7 @@ import { runB0Diagnostic } from './discovery/b0-diagnostic.mjs';
 import { toPublicB0Report } from './discovery/public-report.mjs';
 import { validIssueKey } from './core.mjs';
 import { profileJiraChange } from './discovery/change-profiler.mjs';
+import { profileJiraChangeNarrative, publicNarrativeEvidence } from './discovery/narrative-profiler.mjs';
 import { planDiscoveryQueries } from './discovery/query-planner.mjs';
 import { runB1Retrieval } from './discovery/retrieval-b1.mjs';
 import { toPublicB1Retrieval } from './discovery/public-retrieval-b1.mjs';
@@ -195,6 +196,45 @@ resolver.define('scanBenchmarkB1', async ({ payload }) => {
     };
   } catch {
     return { ok: false, message: 'Scoped B1 benchmark failed.' };
+  }
+});
+
+// Experimental B1.1 comparator: identical scoped CQL, planner, retrieval,
+// budget and asUser permissions to B1. Only the narrative profiler differs.
+// The original B1 v2.9.0 resolvers are intentionally untouched.
+resolver.define('scanBenchmarkB11', async ({ payload }) => {
+  try {
+    if (!isBenchmarkIssueKey(payload?.issueKey)) throw new Error('Not a benchmark case.');
+    const runStarted = performance.now();
+    const issue = await gateway.readIssue(payload.issueKey);
+    const profile = profileJiraChangeNarrative(issue);
+    const plan = planDiscoveryQueries(profile, {
+      maxCqlQueries: LIVE_BENCHMARK.maxCqlCalls,
+      maxDirectLinks: 0,
+    });
+    const retrieval = await runB1Retrieval(plan, createB1Gateway({ scoped: true }), {
+      maxCqlCalls: LIVE_BENCHMARK.maxCqlCalls,
+      readBudget: LIVE_BENCHMARK.readBudget,
+      searchLimit: LIVE_BENCHMARK.searchLimit,
+    });
+    const publicReport = toPublicLiveBenchmark(toPublicB1Retrieval(retrieval), retrieval, {
+      plannedSearches: plan.queries.length,
+      inputQuality: profile.dataQuality.level,
+      planStatus: plan.status,
+      elapsedMs: Math.max(0, performance.now() - runStarted),
+    });
+    return {
+      ok: true,
+      data: {
+        ...publicReport,
+        experimentalVariant: 'B1.1_NARRATIVE_EXTRACTION',
+        narrativeEvidence: publicNarrativeEvidence(profile),
+        // This field is not an inference of relevance or incompatibility.
+        note: publicReport.note + ' The supplied Jira quote supports extraction only.',
+      },
+    };
+  } catch {
+    return { ok: false, message: 'Scoped B1.1 experimental benchmark failed.' };
   }
 });
 
