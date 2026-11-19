@@ -1,6 +1,6 @@
-# Benchmark V1 — Atlassian seeding plan (NOT EXECUTED)
+# Benchmark V1 — Atlassian seeding and verification record
 
-**Status (2026-11-19):** Confluence **15/15 pages created** in DSBMK; one private page confirmed `VIEW_RESTRICTED`. Jira project **DSBENCH** was created through the Jira UI and **6/6 tickets imported and read-verified**. **Two issues are not yet benchmark-ready:** DSBENCH-3 needs the native Jira component `Voyager Scheduler`; DSBENCH-6 needs `Settlement Core`. The live private mapping is intentionally NOT committed to GitHub.  
+**Status (2026-11-19):** Confluence **15/15 pages created** in DSBMK; one private page confirmed `VIEW_RESTRICTED`. Jira project **DSBENCH** created through Jira UI and **6/6 tickets imported and read-verified**. **Native Jira components are now created, attached, and independently read-verified on DSBENCH-3 and DSBENCH-6.** The private ID mapping is intentionally NOT committed to GitHub. A second limited-permission user and complete page-access validation remain outstanding.  
 **Tenant provided by project owner:** `https://one-atlas-mezt.atlassian.net`  
 **Target Confluence space key:** `DSBMK`  
 **Space overview supplied:** `https://one-atlas-mezt.atlassian.net/wiki/spaces/DSBMK/overview?homepageId=5013747`  
@@ -46,13 +46,13 @@
   - `text ~ "legacy-settle"` → **0 pages**
   - `text ~ "Voyager Scheduler"` → 1 service catalog page
 - Interpret CQL results cautiously: Confluence tokenization and asynchronous indexing are genuine confounders. A literal hostname miss does not mean the page is unreadable or impossible to find through the old endpoint.
-- Jira project `CLSD` belongs to a legal service desk and remains untouched. Jira Software company-managed project **DSBENCH** (id `10202`) was created manually in Jira and confirmed empty before seed. Atlassian connector created tickets **DSBENCH-1…DSBENCH-6**, all as `Tâche`, then read and checked their titles/description signals. Because native components do not exist yet (project component count: zero), DSBENCH-3 and DSBENCH-6 were created with empty component arrays and MUST be updated when `Voyager Scheduler` and `Settlement Core` components exist. They are NOT full-fidelity imports yet.
-- Six ticket summaries and essential technical description signals were independently read and verified. Jira descriptions were formatted as separate Markdown paragraphs to retain source line boundaries. **Incomplete fields must be fixed before benchmark:** create Jira components `Voyager Scheduler` and `Settlement Core` through Jira project settings, then attach to DSBENCH-3 and DSBENCH-6 respectively and re-read both issues. Do not add components as text to the Jira description.
+- Jira project `CLSD` belongs to a legal service desk and remains untouched. Jira Software company-managed project **DSBENCH** (id `10202`) was created manually in Jira and confirmed empty before seed. Atlassian connector created tickets **DSBENCH-1…DSBENCH-6**, all as `Tâche`, then read and checked their titles/description signals. Initially, project components were absent and both tickets were seeded without them. **This has now been corrected:** native components `Voyager Scheduler` (Jira ID `10116`) and `Settlement Core` (Jira ID `10117`) were created and attached to DSBENCH-3 and DSBENCH-6, respectively. Both issues were independently re-read and their original descriptions remained unchanged.
+- Six ticket summaries and essential technical description signals were independently read and verified. Jira descriptions were formatted as separate Markdown paragraphs to retain source line boundaries. **Component import completed and verified:** DSBENCH-3 has native `Voyager Scheduler`; DSBENCH-6 has native `Settlement Core`. The Jira descriptions were not modified. Future reruns should log the issue update timestamps.
 - Before the first live comparative trial, implement identical CQL scope for both B0 and B1 and a 10-read limit for both in a **benchmark-only execution path**. The current Forge v2.8.0 B0 production diagnostic still has a different read budget and unscoped searches.
 
-## Scoped Forge benchmark implementation — prepared, NOT deployed
+## Scoped Forge benchmark implementation — deployed to development v2.9.0
 
-A new, separate Forge benchmark path has been committed on `main`, **not yet validated by local npm tests, Forge lint, or deployment**:
+A separate Forge benchmark path has been committed to `main`, locally validated (**95/95 tests**, React build, Forge lint), and **deployed to development v2.9.0**:
 
 - `src/benchmark/live-scope.mjs` fixes corpus boundaries to `space = "DSBMK" AND ancestor = 5177345`, allows DSBENCH-1 through DSBENCH-6 only, and specifies 10 page-read attempts per variant.
 - `src/index.js` exposes **separate** resolvers `scanBenchmarkB0` and `scanBenchmarkB1`. They apply scope in the server-side CQL **before** the search returns hits. Standard `scanB0`, `scanB1`, and M1 `scan` remain unscoped.
@@ -62,9 +62,9 @@ A new, separate Forge benchmark path has been committed on `main`, **not yet val
 - The elapsed duration is measured from before Jira fetch to report construction for both variants. Do not infer API-cost equality: B0 executes at most one CQL, B1 up to four. The common limit is **10 attempted body reads**, not 10 successful pages.
 - **Data loss tracing is still incomplete:** the user-facing projection is not a private full gold-matching benchmark report. The private evaluator exists for synthetic runs, but a secure live trace collection process has not been deployed. Do not announce live recall gains from only UI document counts.
 
-**Required deployment gate:** local `npm.cmd test`, `npm.cmd run build`, and `forge.cmd lint`; then `forge.cmd deploy -e development` by the user. Record the actual Forge version after deployment. Existing v2.8.0 deployment does **not** contain scoped benchmark buttons.
+**Deployment gate completed (2026-11-19):** user executed local `npm.cmd test` (95/95), `npm.cmd run build`, `forge.cmd lint`, and `forge.cmd deploy -e development`; Forge reported **v2.9.0**. The new scoped B0/B1 buttons were verified through four reported live Jira scenarios (DSBENCH-1/2/4/5). The experimental B1.1 branch is **not** deployed to development.
 
-**Remaining corpus prerequisite:** DSBENCH-3 requires native Jira component `Voyager Scheduler` and DSBENCH-6 requires `Settlement Core`. The connected Jira tool lists **zero** components in DSBENCH as of the latest check. Create the components in Jira project settings and attach them to the correct issues before claiming full-fidelity coverage.
+**Component prerequisite satisfied:** `Voyager Scheduler` and `Settlement Core` exist as project components and are attached to DSBENCH-3 and DSBENCH-6 with independent read verification. **Outstanding:** second Atlassian principal to verify restricted page behavior, document/index fidelity checks, and collection of 3/6 live paired observations before making permissions-related claims.
 
 ## Scenario-to-ticket mapping
 
