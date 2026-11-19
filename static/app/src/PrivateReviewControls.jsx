@@ -11,7 +11,9 @@ const CHOICES = [
  * Private review actions only. No close/recheck/fix attestation is accepted
  * from the client. Backend re-reads Jira and Confluence asUser every time.
  */
-export default function PrivateReviewControls({ issueKey, pageId, pageVersion }) {
+export default function PrivateReviewControls({
+  issueKey, pageId, pageVersion, jiraUpdated, onAccessUnverified,
+}) {
   const [review, setReview] = useState(null);
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -23,19 +25,33 @@ export default function PrivateReviewControls({ issueKey, pageId, pageVersion })
     if (busy) return;
     setBusy(true); setError('');
     try {
-      const response = await invoke(resolver, { issueKey, pageId, ...extra });
+      const viewed = {
+        issueKey, pageId, pageVersion, jiraUpdated,
+      };
+      // Only write operations need a displayed-source precondition. A read
+      // reauthorizes both resources but may return a stale historical review.
+      const isWrite = resolver === 'beginPrivateReview' || resolver === 'decidePrivateReview';
+      const response = await invoke(resolver, {
+        issueKey, pageId, ...(isWrite ? { viewed } : {}), ...extra,
+      });
       if (!response?.ok) throw new Error(response?.message || 'Private review unavailable.');
       setReview(response.data ?? null);
       setLoaded(true);
       setReason('');
     } catch (cause) {
+      // An authorization error, stale version or storage failure must not
+      // leave reviewer notes or Confluence quotes visible in this open tab.
+      setReview(null);
+      setLoaded(false);
+      setReason('');
       setError(cause instanceof Error ? cause.message : 'Private review unavailable.');
+      onAccessUnverified?.();
     } finally {
       setBusy(false);
     }
   }
 
-  if (!Number.isSafeInteger(pageVersion) || pageVersion < 1) {
+  if (!Number.isSafeInteger(pageVersion) || pageVersion < 1 || !jiraUpdated) {
     return <p className="note">Review unavailable: the Confluence page version was not returned.</p>;
   }
   return <div className="privateReview">
