@@ -14,6 +14,7 @@ import { cqlFromIntent, normalizeCqlResponse, resolveDirectPage } from './discov
 import { LIVE_BENCHMARK, isBenchmarkIssueKey, scopedBenchmarkCql } from './benchmark/live-scope.mjs';
 import { toPublicLiveBenchmark } from './benchmark/public-live-report.mjs';
 import { evidenceFromReadablePage, toPublicInvestigation } from './investigation/public-investigation.mjs';
+import { investigationScope } from './investigation/scope.mjs';
 
 const Resolver = ResolverModule.default ?? ResolverModule;
 const resolver = new Resolver();
@@ -144,7 +145,7 @@ resolver.define('startInvestigation', async ({ payload }) => {
     if (!validIssueKey(payload?.issueKey)) throw new Error('Invalid issue key.');
     const issue = await gateway.readIssue(payload.issueKey);
     const profile = profileJiraChange(issue);
-    const scoped = isBenchmarkIssueKey(payload.issueKey);
+    const scoped = investigationScope(payload.issueKey, issue);
     const plan = planDiscoveryQueries(profile, {
       maxCqlQueries: scoped ? LIVE_BENCHMARK.maxCqlCalls : 4,
       maxDirectLinks: scoped ? 0 : 5,
