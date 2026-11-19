@@ -181,8 +181,8 @@
           "pageId": "10001",
           "relevance": "relevant",
           "role": "procedure_to_review",
-          "incompatibleInstruction": "yes",
-          "reason": "Normal operation still prescribes v1"
+          "incompatibleInstruction": "unknown",
+          "reason": "Normal recovery still instructs v1 after V2 deployment, but Jira does not prove v1 was retired or unavailable; verify compatibility before an incompatibility decision."
         },
         {
           "pageId": "10002",
@@ -834,8 +834,8 @@
           "pageId": "10006",
           "relevance": "relevant",
           "role": "procedure_to_review",
-          "incompatibleInstruction": "yes",
-          "reason": "Legacy standard recovery route still active"
+          "incompatibleInstruction": "unknown",
+          "reason": "Standard recovery instructs v1 while V2 is deployed, but retirement or incompatibility of v1 is not established by the Jira evidence alone."
         },
         {
           "pageId": "10007",
@@ -890,8 +890,8 @@
           "pageId": "10014",
           "relevance": "relevant",
           "role": "procedure_to_review",
-          "incompatibleInstruction": "yes",
-          "reason": "Restricted operational procedure still references v1"
+          "incompatibleInstruction": "unknown",
+          "reason": "The restricted production failover procedure prescribes v1, but V2 deployment alone does not establish v1's removal or incompatibility."
         },
         {
           "pageId": "10015",
@@ -903,7 +903,7 @@
       ]
     }
   ],
-  "corpusRevision": "1.1",
+  "corpusRevision": "1.2",
   "annotationChangeLog": [
     {
       "revision": "1.1",
@@ -914,6 +914,36 @@
       "from": "yes",
       "to": "unknown",
       "reason": "Traffic moved is not evidence the previous route became invalid. This corrects the benchmark label only, not the Jira description or Confluence page."
+    },
+    {
+      "revision": "1.2",
+      "date": "2026-11-19",
+      "scenario": "BMK-101",
+      "pageId": "10001",
+      "field": "incompatibleInstruction",
+      "from": "yes",
+      "to": "unknown",
+      "reason": "Normal recovery still instructs v1 after V2 deployment, but Jira does not prove v1 was retired or unavailable; verify compatibility before an incompatibility decision."
+    },
+    {
+      "revision": "1.2",
+      "date": "2026-11-19",
+      "scenario": "BMK-106",
+      "pageId": "10006",
+      "field": "incompatibleInstruction",
+      "from": "yes",
+      "to": "unknown",
+      "reason": "Standard recovery instructs v1 while V2 is deployed, but retirement or incompatibility of v1 is not established by the Jira evidence alone."
+    },
+    {
+      "revision": "1.2",
+      "date": "2026-11-19",
+      "scenario": "BMK-106",
+      "pageId": "10014",
+      "field": "incompatibleInstruction",
+      "from": "yes",
+      "to": "unknown",
+      "reason": "The restricted production failover procedure prescribes v1, but V2 deployment alone does not establish v1's removal or incompatibility."
     }
   ]
 }
