@@ -1,5 +1,7 @@
 # DriftSignal — Investigation MVP contract (Codegeist 2026)
 
+**Technical-review hardening (2026-11-19):** The scoped/unscoped decision is now based on the canonically re-read Jira issue, with unknown DSBENCH tickets denied. Jira-only Confluence `explicit_link` values and their quotes are redacted until the destination has been independently read as the user. Public candidate links are permitted only when the URL references the exact successfully read page. Additional negative tests cover canonical key mismatch and search-hit URLs pointing to other page IDs.
+
 **Status:** Milestone I read-only evidence panel implemented in a **draft branch**, pending CI, technical review and isolated Forge deployment. Milestones II/III remain design proposals. Drafted after strategic and technical reviews on 2026-11-19.  
 **Stable backend reference:** Forge Development v2.9.0, B1 scoped retrieval (benchmark corpus 1.1).  
 **New gold labels:** annotation revision 1.2 was merged independently; this does not modify the historical Forge v2.9.0 runs.
