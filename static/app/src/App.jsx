@@ -26,7 +26,7 @@ export default function App() {
   const [b1Data, setB1Data] = useState(null);
   const [b1Busy, setB1Busy] = useState(false);
   const [b1Error, setB1Error] = useState('');
-  const [benchData, setBenchData] = useState(null);
+  const [benchResults, setBenchResults] = useState({ B0: null, B1: null });
   const [benchBusy, setBenchBusy] = useState(false);
   const [benchError, setBenchError] = useState('');
   const isBenchmarkTicket = /^DSBENCH-[1-6]$/.test(issueKey);
@@ -90,12 +90,12 @@ export default function App() {
 
   async function runScopedBenchmark(variant) {
     if (!isBenchmarkTicket || benchBusy) return;
-    setBenchBusy(true); setBenchError(''); setBenchData(null);
+    setBenchBusy(true); setBenchError('');
     try {
       const method = variant === 'B0' ? 'scanBenchmarkB0' : 'scanBenchmarkB1';
       const response = await invoke(method, { issueKey });
       if (!response?.ok) throw new Error(response?.message || 'Benchmark failed.');
-      setBenchData(response.data);
+      setBenchResults((previous) => ({ ...previous, [variant]: response.data }));
     } catch (err) {
       setBenchError(err instanceof Error ? err.message : 'Benchmark failed.');
     } finally {
@@ -117,8 +117,8 @@ export default function App() {
         <button disabled={!issueKey || busy} onClick={scan}>{busy ? 'Scanning…' : 'Scan documentation →'}</button>
       </div>
       <p className="note">Discovery benchmark: compare the historical single-token Confluence search separately from the M1 scan.</p>
-      <button className="secondary" disabled={!issueKey || b0Busy || b1Busy || busy} onClick={runB0}>{b0Busy ? 'Running B0…' : 'Run B0 discovery diagnostic'}</button>
-      <button className="secondary" disabled={!issueKey || b0Busy || b1Busy || busy} onClick={runB1}>{b1Busy ? 'Running B1…' : 'Run B1 multi-signal retrieval'}</button>
+      <button className="secondary" disabled={!issueKey || b0Busy || b1Busy || busy || benchBusy} onClick={runB0}>{b0Busy ? 'Running B0…' : 'Run B0 discovery diagnostic'}</button>
+      <button className="secondary" disabled={!issueKey || b0Busy || b1Busy || busy || benchBusy} onClick={runB1}>{b1Busy ? 'Running B1…' : 'Run B1 multi-signal retrieval'}</button>
       {isBenchmarkTicket && <div className="finding">
         <strong>Benchmark V1 · Controlled corpus</strong>
         <p className="note">Same DSBMK descendant corpus, 10 maximum body reads each. Old unscoped B0/B1 controls above remain unchanged. The mode is retrieval-only, not a relevance benchmark.</p>
@@ -163,7 +163,9 @@ export default function App() {
       <p className="note">{b1Data.note} This run is not yet an equal-budget B0/B1 relevance benchmark.</p>
     </section>}
     {benchError && <div className="message danger">{benchError}</div>}
-    {benchData && <section className="sourceCard">
+    {['B0', 'B1'].map((variant) => {
+      const benchData = benchResults[variant];
+      return benchData && <section className="sourceCard" key={variant}>
       <div className="sourceHead"><strong>{benchData.variant === 'B0' ? 'Controlled benchmark · B0' : 'Controlled benchmark · B1'}</strong><Status value={benchData.status}/></div>
       <p><strong>Corpus:</strong> DSBMK · Revision {benchData.benchmark.corpusRevision} · <strong>Read cap:</strong> {benchData.benchmark.readBudget} pages</p>
       <p><strong>CQL queries:</strong> {benchData.benchmark.plannedSearches} planned · {benchData.benchmark.searchesAttempted} attempted · {benchData.benchmark.searchesSucceeded} successful · {benchData.benchmark.searchesFailed} failed</p>
@@ -176,7 +178,8 @@ export default function App() {
       </div>)}
       {benchData.planStatus === 'INSUFFICIENT_SEARCH_SIGNALS' && <p className="note">Input lacks discriminating search signals; no retrieval performed.</p>}
       <p className="note">{benchData.note} This diagnostic has a common read cap, not a common total API-call budget. Hidden and unread search hits are not shown.</p>
-    </section>}
+    </section>;
+    })}
     {data && <>
       <section className={`summary ${MESSAGES[data.outcome]?.[2] || 'neutral'}`}>
         <div className="eyebrow">SCAN RESULT · {data.issueKey}</div>
