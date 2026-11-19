@@ -18,7 +18,7 @@ These two observations are diagnostic only. They cannot establish recall, precis
 
 ## Dataset V1
 
-`fixtures/benchmark-v1/corpus.synthetic.json` is **entirely synthetic** and public:
+`fixtures/benchmark-v1/corpus.synthetic.json` is **entirely synthetic** and public (corpus annotation revision **1.1**; schema version remains 1.0). The baseline synthetic retrieval outputs were captured before the annotation-only correction; 1.1 changes BMK-102 page `10006` incompatibility from `yes` to `unknown`, without changing any source ticket, page, relevance label, or discovery behavior:
 - Six synthetic Jira change cases (`BMK-101` through `BMK-106`), 15 invented Confluence pages, 90 explicit per-case page annotations, two simulated access profiles (`engineer`, `limited`).
 - Four development cases: structured change, natural language, indirect relationship, and justified abstention.
 - Two reserved validation cases: generic health endpoint plus rollback/architecture, and restricted failover procedure.
@@ -42,6 +42,16 @@ A rollback-only V1 procedure may be a **relevant** document with **no** incompat
 5. **Comparison B — fixed total request budget (proposed 12):** count Jira reads, link verification/lookup, CQL and paginated searches, and attempted Confluence body reads; keep the read cap at 10. Implement total-budget enforcement before claiming this comparison. Never treat a planned request as executed.
 6. Record repeated timings, e.g. at least three alternating pairs per persona/case. Report distribution and API costs, not a single winner.
 7. Evaluate stage-by-stage **against the private, accessible gold only**. Select the top two failure categories, test one narrow improvement (possibly a bounded LLM extraction/rerank spike), then verify it on held-out cases before making a claim.
+
+## Live Atlassian corpus-scoping protocol (consultant amendment)
+
+- For the **primary benchmark**, apply the **same Confluence CQL space constraint** `space = "DSBMK"` for both B0 and B1, *before* the ranked results are selected or fetched. A parent page alone does not isolate search results. Do not compare scoped B0 with unscoped B1.
+- Keep a **separate zero-configuration trial** without a space constraint and record out-of-corpus hits and their read-budget impact using the **developer-only** evaluator. This is an ecological test, not the primary same-corpus result.
+- Run both variants with **at most 10 page read attempts**, recording successful/failed search calls, search-query text, pagination limits, and timings. B0's existing default 15-read panel is *not* the comparable 10-read benchmark.
+- Restricted pages must **not** count against the limited persona's accessible recall denominator. Test both identities against the *same* Jira issue; check the complete UI output for title, page ID, excerpt, or any aggregate that could betray denied material. A real second user identity is necessary.
+- Check **both direct body-read fidelity and CQL indexability** after import; record title/host/path search probes including negative results. A page readable by ID but absent from a specific CQL query is not necessarily a ranking failure.
+- Always record corpus revision, retrieval commit, **actually deployed Forge version**, per-page and Jira issue versions, and access-profile identity before executing live paired tests.
+- Reserved cases BMK-105/106 are known public synthetic labels, **not** an independent blind holdout. Later add genuinely unseen services and documents before announcing external generalization.
 
 ## Minimum private evaluation table
 
