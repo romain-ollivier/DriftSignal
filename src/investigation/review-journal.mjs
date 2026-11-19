@@ -39,38 +39,42 @@ function assertRecord(source, actorId, current) {
   }
 }
 async function readJournal(storage, prefix, actorId, issueKey, pageId) {
-  const values = await storage.list(prefix, MAX_EVENTS + 1);
-  if (!Array.isArray(values) || values.length > MAX_EVENTS) {
-    throw new Error('Review history cannot be verified within its fixed budget.');
-  }
-  if (!values.length) return null;
-  const entries = values.map((entry) => {
-    if (!entry || typeof entry.key !== 'string' || !entry.key.startsWith(prefix)) {
-      throw new Error('Review record is outside authorized keyspace.');
+  // KVS query() is eventually consistent. Only direct get() on each known
+  // deterministic key offers a strictly consistent read of a committed rN.
+  // Bound the scan to 30 events; never return r1 while committed r2 exists.
+  let latest = null;
+  for (let revision = 1; revision <= MAX_EVENTS; revision++) {
+    const value = await storage.get(keyForRevision(prefix, revision));
+    if (value === undefined) {
+      // Detect a gap immediately after the first missing revision.
+      if (revision < MAX_EVENTS &&
+          await storage.get(keyForRevision(prefix, revision + 1)) !== undefined) {
+        throw new Error('Missing review revision; journal integrity could not be verified.');
+      }
+      return latest;
     }
-    const suffix = entry.key.slice(prefix.length);
-    if (!/^r\d{6}$/.test(suffix)) throw new Error('Malformed review revision.');
-    const revision = Number(suffix.slice(1));
-    if (revision !== entry.value?.revision) throw new Error('Revision/key mismatch.');
-    assertRecord({ issueKey, pageId }, actorId, entry.value);
-    return { revision, value: entry.value };
-  }).sort((a,b) => a.revision-b.revision);
-  for(let i=0;i<entries.length;i++){
-    if(entries[i].revision!==i+1)throw new Error('Missing, duplicate or out-of-order review event.');
-    if(entries[i].value.history?.length!==i+1)throw new Error('Invalid persisted audit history.');
+    assertRecord({ issueKey, pageId }, actorId, value);
+    if (value.revision !== revision || !Array.isArray(value.history) ||
+        value.history.length !== revision ||
+        value.history[revision - 1]?.sequence !== revision ||
+        value.history[revision - 1]?.state !== value.state) {
+      throw new Error('Persisted review revision/history mismatch.');
+    }
+    latest = value;
   }
-  return entries.at(-1).value;
+  return latest;
 }
+
 function project(record, source) {
   if (!record) return null;
   const stale = record.jiraUpdated !== source.jiraUpdated ||
     record.pageVersion !== source.pageVersion;
   // PRIVATE to the authenticated current actor only, after fresh asUser checks.
-  return { ...record, stale, canDecide: !stale && record.state !== 'RESOLVED_VERIFIED' };
+  return { ...record, stale, canDecide: !stale };
 }
 export function createPrivateReviewJournal(storage) {
-  if(typeof storage?.list!=='function'||typeof storage?.putNew!=='function'){
-    throw new Error('A bounded read and create-only storage adapter is required.');
+  if(typeof storage?.get!=='function'||typeof storage?.putNew!=='function'){
+    throw new Error('A strictly consistent key get and create-only storage adapter are required.');
   }
   return {
     async read({ actorId, source }) {
