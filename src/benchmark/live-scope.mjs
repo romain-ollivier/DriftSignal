@@ -7,6 +7,8 @@
 export const LIVE_BENCHMARK = Object.freeze({
   projectKey: 'DSBENCH',
   confluenceSpaceKey: 'DSBMK',
+  // Verified from the DSBMK space metadata in the Atlassian tenant.
+  confluenceSpaceId: '5013508',
   corpusAncestorId: '5177345',
   corpusRevision: '1.1',
   engineBaselineCommit: '090e74f',
